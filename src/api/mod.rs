@@ -8,8 +8,8 @@ pub mod user;
 pub static DN: &'static str = "https://forum.gamer.com.tw/";
 
 pub struct WebSite {
-    url: Url,
-    document: Html
+    pub url: Url,
+    pub document: Html
 }
 
 pub trait AwaitedPage<T> {
@@ -18,4 +18,8 @@ pub trait AwaitedPage<T> {
     fn previous(&self) -> Option<T>;
     fn get(&self, page: usize) -> Option<T>;
     fn get_range(&self, start: usize, end: usize) -> Option<T>;
+}
+
+pub trait UrlWithId<T> {
+    fn url(p: T) -> Url;
 }
