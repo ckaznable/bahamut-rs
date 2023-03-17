@@ -1,11 +1,15 @@
 use std::collections::HashMap;
 
-use scraper::{Html, Selector};
+use scraper::{Html, Selector, ElementRef};
 use url::Url;
 
-use super::{DN, post::Post, WebSite};
+use super::{DN, WebSite, UrlWithId};
 
 pub async fn get_board(id: &str) -> Board {
+    get_board_with_page(id, 1u16).await
+}
+
+pub async fn get_board_with_page(id: &str, page: u16) -> Board {
     let url = Board::url(id);
     let html = reqwest::get(url.as_str())
         .await
@@ -18,44 +22,47 @@ pub async fn get_board(id: &str) -> Board {
     Board::try_from(WebSite { url, document }).unwrap()
 }
 
-pub trait BoardPost {
+pub trait PostReadable {
     fn id(&self) -> String;
-    fn post(&self) -> Vec<Post>;
+    fn post(&self) -> Vec<BoardPost>;
 }
 
 pub struct Board {
     pub id: String,
     pub name: String,
     pub category: HashMap<String, BoardCategory>,
+    pub page: u16,
 
     document: Html,
 }
 
-impl BoardPost for Board {
+impl PostReadable for Board {
     fn id(&self) -> String {
         self.id.to_owned()
     }
 
-    fn post(&self) -> Vec<Post> {
+    fn post(&self) -> Vec<BoardPost> {
         let selector = Selector::parse(".b-list__row").expect("parse selector error");
         self.document
             .select(&selector)
             .into_iter()
             .map(|root| {
-                Post::try_from(root).map_or(Post::default(), |x|x)
+                BoardPost::try_from(root).map_or(BoardPost::default(), |x|x)
             })
-            .collect::<Vec<Post>>()
+            .collect::<Vec<BoardPost>>()
+    }
+}
+
+impl UrlWithId<&str> for Board {
+    fn url(id: &str) -> Url {
+        let url = format!("{}{}?bsn={}", DN, "B.php", id);
+        Url::parse(url.as_ref()).expect("invalid url")
     }
 }
 
 impl Board {
-    pub fn url(id: &str) -> Url {
-        let url = format!("{}{}?bsn={}", DN, "B.php", id);
-        Url::parse(url.as_ref()).expect("invalid url")
-    }
-
     fn try_name_from_html(document: &Html) -> Option<String> {
-        let selector = Selector::parse("head name").expect("parse selector error");
+        let selector = Selector::parse("head title").expect("parse selector error");
         let title = document
             .select(&selector)
             .next()
@@ -94,6 +101,13 @@ impl Board {
 
         map
     }
+
+    fn try_page_from_html(document: &Html) -> u16 {
+        let selector = Selector::parse(".BH-pagebtnA a").unwrap();
+        let last = document.select(&selector).last().unwrap();
+        let page: u16 = last.text().collect::<String>().parse().unwrap();
+        page
+    }
 }
 
 impl TryFrom<WebSite> for Board {
@@ -106,6 +120,7 @@ impl TryFrom<WebSite> for Board {
             name: Board::try_name_from_html(&document).map_or(String::from(""), |v|v),
             id: Board::try_id_from_url(&url),
             category: Board::try_category_map_from_html(&document),
+            page: Board::try_page_from_html(&document),
             document
         })
     }
@@ -147,17 +162,166 @@ pub struct BoardCategory {
     pub id: BoardCategoryId,
 }
 
-impl BoardCategory {
-    pub fn url(id: &str, sub_id: &str) -> Url {
-        let url = format!("{}{}?bsn={}&subbsn={}", DN, "B.php", sub_id, id);
+impl UrlWithId<(&str, &str)> for BoardCategory {
+    fn url(p: (&str, &str)) -> Url {
+        let url = format!("{}{}?bsn={}&subbsn={}", DN, "B.php", p.0, p.1);
         Url::parse(url.as_ref()).expect("invalid url")
     }
+}
 
+impl BoardCategory {
     pub fn id(&self) -> String {
         self.id.sub_id.to_owned()
     }
 
     pub fn board_id(&self) -> String {
         self.id.id.to_owned()
+    }
+}
+
+pub struct BoardPost {
+    id: String,
+    title: String,
+    date: String,
+    desc: String,
+    category: BoardCategory,
+    gp: u16,
+    reply: u16,
+}
+
+impl Default for BoardPost {
+    fn default() -> Self {
+        let empty: &str = "";
+        BoardPost {
+            id: String::from("0"),
+            title: empty.to_string(),
+            date: empty.to_string(),
+            desc: empty.to_string(),
+            gp: 0,
+            reply: 0,
+            category: BoardCategory {
+                name: empty.to_string(),
+                id: BoardCategoryId {
+                    id: empty.to_string(),
+                    sub_id: empty.to_string(),
+                }
+            }
+        }
+    }
+}
+
+impl UrlWithId<(&str, &str)> for BoardPost {
+    fn url(p: (&str, &str)) -> Url {
+        let url = format!("{}{}?bsn={}&snA={}", DN, "B.php", p.0, p.1);
+        Url::parse(url.as_ref()).expect("invalid url")
+    }
+}
+
+impl BoardPost {
+    pub fn id(&mut self, id: String) -> &Self {
+        self.id = id;
+        self
+    }
+
+    pub fn reply_count(&mut self, reply: u16) -> &Self {
+        self.reply = reply;
+        self
+    }
+
+    pub fn title(&mut self, title: String) -> &Self {
+        self.title = title;
+        self
+    }
+
+    pub fn date(&mut self, date: String) -> &Self {
+        self.date = date;
+        self
+    }
+
+    pub fn gp(&mut self, gp: u16) -> &Self {
+        self.gp = gp;
+        self
+    }
+
+    pub fn desc(&mut self, desc: String) -> &Self {
+        self.desc = desc;
+        self
+    }
+
+    pub fn category(&mut self, category: BoardCategory) -> &Self {
+        self.category = category;
+        self
+    }
+}
+
+impl TryFrom<ElementRef<'_>> for BoardPost {
+    type Error = &'static str;
+
+    fn try_from(elm: ElementRef) -> Result<Self, &'static str> {
+        let mut post = BoardPost::default();
+
+        // id
+        let selector = Selector::parse(".b-list__main a").expect("parse selector error");
+        if let Some(dom) = elm.select(&selector).next() {
+            let url = dom.value().attr("href").unwrap();
+            let url = format!("{}/{}", DN, url);
+            Url::parse(url.as_str())
+                .unwrap()
+                .query_pairs()
+                .into_iter()
+                .for_each(|(k, v)| {
+                    if k == "snA" {
+                        post.id(v.to_string());
+                    }
+                });
+        }
+
+        // title
+        let selector = Selector::parse(".b-list__tile").expect("parse selector error");
+        if let Some(dom) = elm.select(&selector).next() {
+            post.title(dom.text().collect::<String>());
+        }
+
+        // description
+        let selector = Selector::parse(".b-list__brief").expect("parse selector error");
+        if let Some(dom) = elm.select(&selector).next() {
+            post.desc(dom.text().collect::<String>());
+        }
+
+        // gp
+        let selector = Selector::parse(".b-list__summary__gp").expect("parse selector error");
+        if let Some(dom) = elm.select(&selector).next() {
+            let text = dom.text().collect::<String>();
+            post.gp(text.parse::<u16>().unwrap());
+        }
+
+        // reply
+        let selector = Selector::parse(".b-list__count__number span").expect("parse selector error");
+        if let Some(dom) = elm.select(&selector).next() {
+            let text = dom.text().collect::<String>();
+            post.reply_count(text.parse::<u16>().unwrap());
+        }
+
+        // date
+        let selector = Selector::parse(".b-list__time__edittime a").expect("parse selector error");
+        if let Some(dom) = elm.select(&selector).next() {
+            let text = dom.text().collect::<String>();
+            post.date(text);
+        }
+
+        // category
+        let selector = Selector::parse(".b-list__summary__sort a").expect("parse selector error");
+        if let Some(dom) = elm.select(&selector).next() {
+            let name = dom.text().collect::<String>();
+            let href = dom.value().attr("href").unwrap();
+            let url = Url::parse(format!("{}/{}", DN, href).as_str()).expect("invalid category url");
+
+            post.category(BoardCategory {
+                name,
+                id: BoardCategoryId::try_from(url).expect("invalid category url"),
+            });
+        }
+
+        Ok(post)
     }
 }

@@ -1,140 +1,95 @@
-use scraper::{ElementRef, Selector};
+use scraper::{Html, Selector, ElementRef};
 use url::Url;
 
-use crate::api::board::BoardCategoryId;
-
-use super::{user::User, board::BoardCategory};
+use super::{user::User, WebSite};
 
 pub trait CommentReadable {
-    fn comment(&self) -> Vec<PostReply>;
+    fn comment(&self) -> Vec<PostComment>;
 }
 
+pub trait ReplyReadable {
+    fn reply(&self) -> Vec<PostReply>;
+}
+
+pub type PostDescription = Vec<String>;
+
 pub struct Post {
-    title: String,
-    date: String,
-    user: User,
-    desc: String,
-    category: BoardCategory,
-    gp: u16,
-    reply: u16,
+    pub title: String,
+    pub desc: PostDescription,
+    pub id: String,
+
+    document: Html,
 }
 
 impl CommentReadable for Post {
-    fn comment(&self) -> Vec<PostReply> {
+    fn comment(&self) -> Vec<PostComment> {
         vec![]
     }
 }
 
-impl Default for Post {
-    fn default() -> Self {
-        const empty: &str = "";
-        Post {
-            title: empty.to_string(),
-            date: empty.to_string(),
-            desc: empty.to_string(),
-            user: User::default(),
-            gp: 0,
-            reply: 0,
-            category: BoardCategory {
-                name: empty.to_string(),
-                id: BoardCategoryId {
-                    id: empty.to_string(),
-                    sub_id: empty.to_string(),
+impl ReplyReadable for Post {
+    fn reply(&self) -> Vec<PostReply> {
+        let selector = Post::get_root_elm_selector();
+        self.document.select(&selector)
+            .skip(1)
+            .map(|dom| {
+                PostReply {
+                    id: String::from(""),
+                    desc: Post::try_desc_from_html(&dom),
+                    user: User::default(),
                 }
-            }
-        }
+            })
+            .collect::<Vec<PostReply>>()
     }
 }
 
 impl Post {
-    pub async fn reply(&self) -> Vec<PostComment> {
-        vec![]
+    fn get_root_elm_selector() -> Selector {
+        Selector::parse(".c-post__body").unwrap()
     }
 
-    pub fn reply_count(&mut self, reply: u16) -> &Self {
-        self.reply = reply;
-        self
+    fn try_id_from_url(url: &Url) -> String {
+        let query = url.query_pairs()
+            .find(|(k, _)| k == "snA")
+            .map(|(_, v)|v)
+            .unwrap();
+
+        query.to_string()
     }
 
-    pub fn title(&mut self, title: String) -> &Self {
-        self.title = title;
-        self
+    fn try_title_from_html(document: &Html) -> String {
+        let selector = Selector::parse(".c-post__header__title").unwrap();
+        document.select(&selector).next().unwrap().text().collect::<String>()
     }
 
-    pub fn date(&mut self, date: String) -> &Self {
-        self.date = date;
-        self
-    }
-
-    pub fn gp(&mut self, gp: u16) -> &Self {
-        self.gp = gp;
-        self
-    }
-
-    pub fn user(&mut self, user: User) -> &Self {
-        self.user = user;
-        self
-    }
-
-    pub fn desc(&mut self, desc: String) -> &Self {
-        self.desc = desc;
-        self
-    }
-
-    pub fn category(&mut self, category: BoardCategory) -> &Self {
-        self.category = category;
-        self
+    fn try_desc_from_html(document: &ElementRef) -> PostDescription {
+        let selector = Selector::parse(".c-article__content").unwrap();
+        document.select(&selector).next().unwrap().text().map(|s|s.to_string()).collect::<PostDescription>()
     }
 }
 
-impl TryFrom<ElementRef<'_>> for Post {
+impl TryFrom<WebSite> for Post {
     type Error = &'static str;
 
-    fn try_from(elm: ElementRef) -> Result<Self, &'static str> {
-        let mut post = Post::default();
+    fn try_from(web: WebSite) -> Result<Self, Self::Error> {
+        let WebSite { url, document } = web;
+        let selector = Post::get_root_elm_selector();
+        let top_post_elm= document.select(&selector).next().unwrap();
 
-        // title
-        let selector = Selector::parse(".b-list__tile").expect("parse selector error");
-        if let Some(dom) = elm.select(&selector).next() {
-            post.title(dom.text().collect::<String>());
-        }
-
-        // description
-        let selector = Selector::parse(".b-list__brief").expect("parse selector error");
-        if let Some(dom) = elm.select(&selector).next() {
-            post.desc(dom.text().collect::<String>());
-        }
-
-        // gp
-        let selector = Selector::parse(".b-list__summary__gp").expect("parse selector error");
-        if let Some(dom) = elm.select(&selector).next() {
-            let text = dom.text().collect::<String>();
-            let str = text.as_ref();
-            post.gp(u16::from_str_radix(str, 16).unwrap());
-        }
-
-        // reply
-        let selector = Selector::parse(".b-list__count__number").expect("parse selector error");
-        if let Some(dom) = elm.select(&selector).next() {
-            let text = dom.text().collect::<String>();
-            let str = text.as_ref();
-            post.reply_count(u16::from_str_radix(str, 16).unwrap());
-        }
-
-        // category
-        let selector = Selector::parse(".b-list__summary__sort").expect("parse selector error");
-        if let Some(dom) = elm.select(&selector).next() {
-            let name = dom.text().collect::<String>();
-            let href = dom.value().attr("href").unwrap();
-            let url = Url::parse(href).expect("invalid category url");
-
-            post.category(BoardCategory {
-                name,
-                id: BoardCategoryId::try_from(url).expect("invalid category url"),
-            });
-        }
+        let post = Post {
+            id: Post::try_id_from_url(&url),
+            title: Post::try_title_from_html(&document),
+            desc: Post::try_desc_from_html(&top_post_elm),
+            document,
+        };
 
         Ok(post)
+    }
+}
+
+impl Into<Html> for Post {
+    fn into(self) -> Html {
+        self.document
     }
 }
 
@@ -145,12 +100,13 @@ pub struct PostComment {
 }
 
 pub struct PostReply {
-    desc: String,
+    id: String,
+    desc: PostDescription,
     user: User,
 }
 
 impl CommentReadable for PostReply {
-    fn comment(&self) -> Vec<PostReply> {
+    fn comment(&self) -> Vec<PostComment> {
         vec![]
     }
 }
