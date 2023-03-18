@@ -27,11 +27,39 @@ pub trait PostReadable {
     fn post(&self) -> Vec<BoardPost>;
 }
 
+pub struct BoardPage {
+    page: u16,
+    limit: u16,
+    board: Board,
+}
+
+impl BoardPage {
+    fn try_page_from_html(document: &Html) -> Option<u16> {
+        let selector = Selector::parse(".BH-pagebtnA a").unwrap();
+        let last = document.select(&selector).last().unwrap();
+        let page: u16 = last.text().collect::<String>().parse().unwrap();
+        Some(page)
+    }
+}
+
+impl TryFrom<WebSite> for BoardPage {
+    type Error = &'static str;
+
+    fn try_from(web: WebSite) -> Result<Self, Self::Error> {
+        let page = BoardPage {
+            page: 1u16,
+            limit: BoardPage::try_page_from_html(&web.document).ok_or("invalid page limit")?,
+            board: Board::try_from(web)?,
+        };
+
+        Ok(page)
+    }
+}
+
 pub struct Board {
     pub id: String,
     pub name: String,
     pub category: HashMap<String, BoardCategory>,
-    pub page: u16,
 
     document: Html,
 }
@@ -74,16 +102,16 @@ impl Board {
         name
     }
 
-    fn try_id_from_url(url: &Url) -> String {
+    fn try_id_from_url(url: &Url) -> Option<String> {
         let query = url.query_pairs()
             .find(|(k, _)| k == "bsn")
             .map(|(_, v)|v)
             .unwrap();
 
-        query.to_string()
+        Some(query.to_string())
     }
 
-    fn try_category_map_from_html(document: &Html) -> HashMap<String, BoardCategory> {
+    fn try_category_map_from_html(document: &Html) -> Option<HashMap<String, BoardCategory>> {
         let mut map: HashMap<String, BoardCategory> = HashMap::new();
 
         let selector = Selector::parse(".b-tags__item a").expect("parse selector error");
@@ -99,15 +127,10 @@ impl Board {
                 map.insert(id.sub_id.to_owned(), BoardCategory { id, name });
             });
 
-        map
+        Some(map)
     }
 
-    fn try_page_from_html(document: &Html) -> u16 {
-        let selector = Selector::parse(".BH-pagebtnA a").unwrap();
-        let last = document.select(&selector).last().unwrap();
-        let page: u16 = last.text().collect::<String>().parse().unwrap();
-        page
-    }
+
 }
 
 impl TryFrom<WebSite> for Board {
@@ -118,9 +141,8 @@ impl TryFrom<WebSite> for Board {
 
         Ok(Board {
             name: Board::try_name_from_html(&document).map_or(String::from(""), |v|v),
-            id: Board::try_id_from_url(&url),
-            category: Board::try_category_map_from_html(&document),
-            page: Board::try_page_from_html(&document),
+            id: Board::try_id_from_url(&url).ok_or("id invalid")?,
+            category: Board::try_category_map_from_html(&document).ok_or("category invalid")?,
             document
         })
     }
