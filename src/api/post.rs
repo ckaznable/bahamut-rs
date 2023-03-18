@@ -17,6 +17,8 @@ pub struct Post {
     pub title: String,
     pub desc: PostDescription,
     pub id: String,
+    pub user: User,
+    pub date: String,
 
     document: Html,
 }
@@ -32,12 +34,15 @@ impl ReplyReadable for Post {
         let selector = Post::get_root_elm_selector();
         self.document.select(&selector)
             .skip(1)
-            .map(|dom| {
-                PostReply {
+            .filter_map(|dom| {
+                let reply = PostReply {
                     id: String::from(""),
-                    desc: Post::try_desc_from_html(&dom),
+                    desc: Post::try_desc_from_html(&dom)?,
                     user: User::default(),
-                }
+                    floor: PostReply::try_floor_from_html(&dom)?,
+                };
+
+                Some(reply)
             })
             .collect::<Vec<PostReply>>()
     }
@@ -45,26 +50,50 @@ impl ReplyReadable for Post {
 
 impl Post {
     fn get_root_elm_selector() -> Selector {
-        Selector::parse(".c-post__body").unwrap()
+        Selector::parse(".c-section[id]").unwrap()
     }
 
-    fn try_id_from_url(url: &Url) -> String {
+    fn try_id_from_url(url: &Url) -> Option<String> {
         let query = url.query_pairs()
             .find(|(k, _)| k == "snA")
-            .map(|(_, v)|v)
-            .unwrap();
+            .map(|(_, v)|v)?;
 
-        query.to_string()
+        Some(query.to_string())
     }
 
-    fn try_title_from_html(document: &Html) -> String {
+    fn try_title_from_html(document: &ElementRef) -> Option<String> {
         let selector = Selector::parse(".c-post__header__title").unwrap();
-        document.select(&selector).next().unwrap().text().collect::<String>()
+        let title = document
+            .select(&selector)
+            .next()?
+            .text()
+            .collect::<String>();
+
+        Some(title)
     }
 
-    fn try_desc_from_html(document: &ElementRef) -> PostDescription {
+    fn try_desc_from_html(document: &ElementRef) -> Option<PostDescription> {
         let selector = Selector::parse(".c-article__content").unwrap();
-        document.select(&selector).next().unwrap().text().map(|s|s.to_string()).collect::<PostDescription>()
+        let desc = document
+            .select(&selector)
+            .next()?
+            .text()
+            .map(|s|s.to_string())
+            .collect::<PostDescription>();
+
+        Some(desc)
+    }
+
+    fn try_date_from_html(document: &ElementRef) -> Option<String> {
+        let selector = Selector::parse(".edittime").unwrap();
+        let date = document
+            .select(&selector)
+            .next()?
+            .text()
+            .next()?
+            .to_string();
+
+        Some(date)
     }
 }
 
@@ -74,12 +103,17 @@ impl TryFrom<WebSite> for Post {
     fn try_from(web: WebSite) -> Result<Self, Self::Error> {
         let WebSite { url, document } = web;
         let selector = Post::get_root_elm_selector();
-        let top_post_elm= document.select(&selector).next().unwrap();
+        let top_post_elm= document
+            .select(&selector)
+            .next()
+            .unwrap();
 
         let post = Post {
-            id: Post::try_id_from_url(&url),
-            title: Post::try_title_from_html(&document),
-            desc: Post::try_desc_from_html(&top_post_elm),
+            id: Post::try_id_from_url(&url).ok_or("post id invalid")?,
+            title: Post::try_title_from_html(&top_post_elm).ok_or("post title invalid")?,
+            desc: Post::try_desc_from_html(&top_post_elm).ok_or("post desc invalid")?,
+            user: User::try_from(&top_post_elm)?,
+            date: Post::try_date_from_html(&top_post_elm).ok_or("post date invalid")?,
             document,
         };
 
@@ -103,10 +137,28 @@ pub struct PostReply {
     id: String,
     desc: PostDescription,
     user: User,
+    floor: u16,
 }
 
 impl CommentReadable for PostReply {
     fn comment(&self) -> Vec<PostComment> {
         vec![]
+    }
+}
+
+impl PostReply {
+    fn try_floor_from_html(document: &ElementRef) -> Option<u16> {
+        let selector = Selector::parse(".floor").unwrap();
+        let floor = document
+            .select(&selector)
+            .next()
+            .unwrap()
+            .value()
+            .attr("data-floor")
+            .unwrap()
+            .parse::<u16>()
+            .map_or(0u16, |v|v);
+
+        Some(floor)
     }
 }
