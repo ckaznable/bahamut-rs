@@ -1,26 +1,9 @@
-use std::collections::HashMap;
+use std::{collections::HashMap};
 
 use scraper::{Html, Selector, ElementRef};
 use url::Url;
 
-use super::{DN, WebSite, UrlWithId};
-
-pub async fn get_board(id: &str) -> Board {
-    get_board_with_page(id, 1u16).await
-}
-
-pub async fn get_board_with_page(id: &str, page: u16) -> Board {
-    let url = Board::url(id);
-    let html = reqwest::get(url.as_str())
-        .await
-        .unwrap()
-        .text()
-        .await
-        .unwrap();
-
-    let document = Html::parse_document(html.as_ref());
-    Board::try_from(WebSite { url, document }).unwrap()
-}
+use super::{DN, WebSite, UrlWithId, CachedPage};
 
 pub trait PostReadable {
     fn id(&self) -> String;
@@ -28,13 +11,24 @@ pub trait PostReadable {
 }
 
 pub struct BoardPage {
-    page: u16,
-    limit: u16,
-    board: Board,
+    pub id: String,
+    pub page: u16,
+    pub max: u16,
+
+    cache: HashMap<u16, Option<Board>>,
 }
 
 impl BoardPage {
-    fn try_page_from_html(document: &Html) -> Option<u16> {
+    pub fn new(id: &str) -> BoardPage {
+        BoardPage {
+            id: id.to_string(),
+            page: 1,
+            max: 0,
+            cache: HashMap::new(),
+        }
+    }
+
+    fn try_page_from_html(document: &ElementRef) -> Option<u16> {
         let selector = Selector::parse(".BH-pagebtnA a").unwrap();
         let last = document.select(&selector).last().unwrap();
         let page: u16 = last.text().collect::<String>().parse().unwrap();
@@ -42,17 +36,44 @@ impl BoardPage {
     }
 }
 
-impl TryFrom<WebSite> for BoardPage {
-    type Error = &'static str;
+impl CachedPage<Board> for BoardPage {
+    fn cache(&self) -> &HashMap<u16, Option<Board>> {
+        &self.cache 
+    }
 
-    fn try_from(web: WebSite) -> Result<Self, Self::Error> {
-        let page = BoardPage {
-            page: 1u16,
-            limit: BoardPage::try_page_from_html(&web.document).ok_or("invalid page limit")?,
-            board: Board::try_from(web)?,
-        };
+    fn insert_cache(&mut self, page: &u16, obj: Option<Board>) {
+        self.cache.insert(*page, obj);
+    }
 
-        Ok(page)
+    fn url(&self, page: &u16) -> Url {
+        Board::url((self.id.as_str(), *page))
+    }
+
+    fn page(&self) -> u16 {
+        self.page
+    }
+
+    fn increase_page(&mut self) {
+        self.page += 1;
+    }
+
+    fn decrease_page(&mut self) {
+        self.page -= 1;
+    }
+
+    fn max(&self) -> u16 {
+        self.max
+    }
+
+    fn set_max(&mut self, max: &u16) {
+        self.max = *max;
+    }
+
+    fn max_from_page(document: &ElementRef) -> u16 {
+        match BoardPage::try_page_from_html(document) {
+            None => 0,
+            Some(v) => v
+        }
     }
 }
 
@@ -64,12 +85,31 @@ pub struct Board {
     document: Html,
 }
 
-impl PostReadable for Board {
-    fn id(&self) -> String {
-        self.id.to_owned()
-    }
+impl Clone for Board {
+    fn clone(&self) -> Self {
+        let mut new_map: HashMap<String, BoardCategory> = HashMap::new();
+        for (key, value) in &self.category {
+            new_map.insert(key.clone(), value.clone());
+        }
 
-    fn post(&self) -> Vec<BoardPost> {
+        Board {
+            id: self.id.to_owned(),
+            name: self.name.to_owned(),
+            category: new_map,
+            document: self.document.clone(),
+        }
+    }
+}
+
+impl UrlWithId<(&str, u16)> for Board {
+    fn url(p: (&str, u16)) -> Url {
+        let url = format!("{}{}?bsn={}&page={}", DN, "B.php", p.0, p.1);
+        Url::parse(url.as_ref()).expect("invalid url")
+    }
+}
+
+impl Board {
+    pub fn post(&self) -> Vec<BoardPost> {
         let selector = Selector::parse(".b-list__row").expect("parse selector error");
         self.document
             .select(&selector)
@@ -79,16 +119,7 @@ impl PostReadable for Board {
             })
             .collect::<Vec<BoardPost>>()
     }
-}
 
-impl UrlWithId<&str> for Board {
-    fn url(id: &str) -> Url {
-        let url = format!("{}{}?bsn={}", DN, "B.php", id);
-        Url::parse(url.as_ref()).expect("invalid url")
-    }
-}
-
-impl Board {
     fn try_name_from_html(document: &Html) -> Option<String> {
         let selector = Selector::parse("head title").expect("parse selector error");
         let title = document
@@ -129,8 +160,6 @@ impl Board {
 
         Some(map)
     }
-
-
 }
 
 impl TryFrom<WebSite> for Board {
@@ -154,6 +183,7 @@ impl Into<Html> for Board {
     }
 }
 
+#[derive(Clone)]
 pub struct BoardCategoryId {
     pub id: String,
     pub sub_id: String
@@ -179,6 +209,7 @@ impl TryFrom<Url> for BoardCategoryId {
     }
 }
 
+#[derive(Clone)]
 pub struct BoardCategory {
     pub name: String,
     pub id: BoardCategoryId,

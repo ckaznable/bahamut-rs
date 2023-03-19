@@ -1,22 +1,9 @@
-use api::{post::Post, WebSite};
-use scraper::Html;
-
-use crate::api::post::ReplyReadable;
-
-mod api;
+use bahamut_rs::api::{board::BoardPage, CachedPage};
 
 #[tokio::main]
 async fn main() -> reqwest::Result<()> {
-    let url = url::Url::parse("https://forum.gamer.com.tw/C.php?bsn=60030&snA=620925&tnum=22").unwrap();
-    let text = reqwest::get(url.clone())
-        .await?
-        .text()
-        .await?;
-
-    let document = Html::parse_document(text.as_ref());
-    let post = Post::try_from(WebSite { url, document }).unwrap();
-    println!("{}", post.id);
-    println!("{}", post.reply().len());
+    let mut board_page = BoardPage::new("48053");
+    println!("{}", board_page.next().unwrap().post().len());
 
     Ok(())
 }
