@@ -128,16 +128,16 @@ impl Into<Html> for Post {
 }
 
 pub struct PostComment {
-    name: String,
-    comment: String,
-    id: String,
+    pub name: String,
+    pub comment: String,
+    pub id: String,
 }
 
 pub struct PostReply {
-    id: String,
-    desc: PostDescription,
-    user: User,
-    floor: u16,
+    pub id: String,
+    pub desc: PostDescription,
+    pub user: User,
+    pub floor: u16,
 }
 
 impl CommentReadable for PostReply {

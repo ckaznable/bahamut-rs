@@ -23,10 +23,10 @@ impl Display for UserRace {
 }
 
 pub struct User {
-    id: String,
-    race: UserRace,
-    name: String,
-    lv: u8,
+    pub id: String,
+    pub race: UserRace,
+    pub name: String,
+    pub lv: u8,
 }
 
 impl Default for User {
