@@ -2,6 +2,7 @@ use std::fmt::Display;
 
 use scraper::{Selector, ElementRef};
 
+#[derive(Clone)]
 pub enum UserRace {
     Human,
     Elf,
@@ -22,6 +23,7 @@ impl Display for UserRace {
     }
 }
 
+#[derive(Clone)]
 pub struct User {
     pub id: String,
     pub race: UserRace,
