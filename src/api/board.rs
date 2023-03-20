@@ -38,7 +38,7 @@ impl BoardPage {
 
 impl CachedPage<Board> for BoardPage {
     fn cache(&self) -> &HashMap<u16, Option<Board>> {
-        &self.cache 
+        &self.cache
     }
 
     fn insert_cache(&mut self, page: &u16, obj: Option<Board>) {
