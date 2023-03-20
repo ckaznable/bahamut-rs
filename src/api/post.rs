@@ -1,7 +1,9 @@
+use std::collections::HashMap;
+
 use scraper::{Html, Selector, ElementRef};
 use url::Url;
 
-use super::{user::User, WebSite};
+use super::{user::User, WebSite, CachedPage, DN};
 
 pub trait CommentReadable {
     fn comment(&self) -> Vec<PostComment>;
@@ -13,6 +15,84 @@ pub trait ReplyReadable {
 
 pub type PostDescription = Vec<String>;
 
+pub struct PostPage {
+    pub board_id: String,
+    pub id: String,
+    pub page: u16,
+    pub max: u16,
+
+    cache: HashMap<u16, Option<Post>>,
+}
+
+impl PostPage {
+    pub fn new(board_id: &str, id: &str) -> PostPage {
+        PostPage {
+            board_id: board_id.to_string(),
+            id: id.to_string(),
+            page: 1,
+            max: 0,
+            cache: HashMap::new(),
+        }
+    }
+
+    fn try_page_from_html(document: &ElementRef) -> Option<u16> {
+        let selector = Selector::parse(".BH-pagebtnA a").unwrap();
+        let max: u16 = document
+            .select(&selector)
+            .last()?
+            .text()
+            .next()?
+            .to_string()
+            .parse()
+            .unwrap();
+
+        Some(max)
+    }
+}
+
+impl CachedPage<Post> for PostPage {
+    fn cache(&self) -> &HashMap<u16, Option<Post>> {
+        &self.cache
+    }
+
+    fn insert_cache(&mut self, page: &u16, obj: Option<Post>) {
+        self.cache.insert(*page, obj);
+    }
+
+    fn url(&self, page: &u16) -> Url {
+        let url = format!("{}C.php?bsn={}&snA={}&page={}", DN, self.board_id, self.id, page);
+        Url::parse(url.as_ref()).unwrap()
+    }
+
+    fn page(&self) -> u16 {
+        self.page
+    }
+
+    fn increase_page(&mut self) {
+        self.page += 1;
+    }
+
+    fn decrease_page(&mut self) {
+        self.page -= 1;
+    }
+
+    fn max(&self) -> u16 {
+        self.max
+    }
+
+    fn set_max(&mut self, max: &u16) {
+        self.max = *max;
+    }
+
+    fn max_from_page(document: &ElementRef) -> u16 {
+        match PostPage::try_page_from_html(document) {
+            None => 0,
+            Some(v) => v
+        }
+    }
+}
+
+#[derive(Clone)]
 pub struct Post {
     pub title: String,
     pub desc: PostDescription,
@@ -127,12 +207,14 @@ impl Into<Html> for Post {
     }
 }
 
+#[derive(Clone)]
 pub struct PostComment {
     pub name: String,
     pub comment: String,
     pub id: String,
 }
 
+#[derive(Clone)]
 pub struct PostReply {
     pub id: String,
     pub desc: PostDescription,
