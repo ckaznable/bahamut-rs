@@ -233,13 +233,13 @@ impl BoardCategory {
 }
 
 pub struct BoardPost {
-    id: String,
-    title: String,
-    date: String,
-    desc: String,
-    category: BoardCategory,
-    gp: u16,
-    reply: u16,
+    pub id: String,
+    pub title: String,
+    pub date: String,
+    pub desc: String,
+    pub category: BoardCategory,
+    pub gp: u16,
+    pub reply: u16,
 }
 
 impl Default for BoardPost {
