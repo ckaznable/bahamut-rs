@@ -114,8 +114,14 @@ impl Board {
         self.document
             .select(&selector)
             .into_iter()
-            .map(|root| {
-                BoardPost::try_from(root).map_or(BoardPost::default(), |x|x)
+            .filter_map(|root| {
+                BoardPost::try_from(root).map_or(None, |x| {
+                    if x.title != "" {
+                        Some(x)
+                    } else {
+                        None
+                    }
+                })
             })
             .collect::<Vec<BoardPost>>()
     }
@@ -332,33 +338,33 @@ impl TryFrom<ElementRef<'_>> for BoardPost {
         // title
         let selector = Selector::parse(".b-list__tile").expect("parse selector error");
         if let Some(dom) = elm.select(&selector).next() {
-            post.title(dom.text().collect::<String>());
+            post.title(dom.text().collect::<String>().trim().into());
         }
 
         // description
         let selector = Selector::parse(".b-list__brief").expect("parse selector error");
         if let Some(dom) = elm.select(&selector).next() {
-            post.desc(dom.text().collect::<String>());
+            post.desc(dom.text().collect::<String>().trim().into());
         }
 
         // gp
         let selector = Selector::parse(".b-list__summary__gp").expect("parse selector error");
         if let Some(dom) = elm.select(&selector).next() {
-            let text = dom.text().collect::<String>();
+            let text: String = dom.text().collect::<String>().trim().into();
             post.gp(text.parse::<u16>().unwrap());
         }
 
         // reply
         let selector = Selector::parse(".b-list__count__number span").expect("parse selector error");
         if let Some(dom) = elm.select(&selector).next() {
-            let text = dom.text().collect::<String>();
+            let text: String = dom.text().collect::<String>().trim().into();
             post.reply_count(text.parse::<u16>().unwrap());
         }
 
         // date
         let selector = Selector::parse(".b-list__time__edittime a").expect("parse selector error");
         if let Some(dom) = elm.select(&selector).next() {
-            let text = dom.text().collect::<String>();
+            let text: String = dom.text().collect::<String>().trim().into();
             post.date(text);
         }
 
