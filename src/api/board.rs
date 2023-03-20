@@ -1,4 +1,4 @@
-use std::{collections::HashMap};
+use std::collections::HashMap;
 
 use scraper::{Html, Selector, ElementRef};
 use url::Url;
@@ -115,13 +115,7 @@ impl Board {
             .select(&selector)
             .into_iter()
             .filter_map(|root| {
-                BoardPost::try_from(root).map_or(None, |x| {
-                    if x.title != "" {
-                        Some(x)
-                    } else {
-                        None
-                    }
-                })
+                BoardPost::try_from(root).map_or(None, |x| Some(x))
             })
             .collect::<Vec<BoardPost>>()
     }
@@ -339,6 +333,8 @@ impl TryFrom<ElementRef<'_>> for BoardPost {
         let selector = Selector::parse(".b-list__tile").expect("parse selector error");
         if let Some(dom) = elm.select(&selector).next() {
             post.title(dom.text().collect::<String>().trim().into());
+        } else {
+            return Err("ad post");
         }
 
         // description
