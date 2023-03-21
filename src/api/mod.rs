@@ -7,6 +7,7 @@ use url::Url;
 pub mod post;
 pub mod board;
 pub mod user;
+pub mod search;
 
 pub static DN: &'static str = "https://forum.gamer.com.tw/";
 
