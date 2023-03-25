@@ -51,7 +51,12 @@ pub trait CachedPage<T> where T: Sized + TryFrom<WebSite> + Clone {
         max != 0 && self.page() > max
     }
 
-    fn get(&mut self, page: u16, ignore_cache: bool) -> Option<T> {
+    fn get_page_html(&self, page: u16) -> Html {
+        let url = self.url(&page);
+        block_on(get_document(&url))
+    }
+
+    fn get(&self, page: u16, ignore_cache: bool) -> Option<T> {
         let max = self.max();
         if max != 0 && page > max {
             return None;
@@ -66,13 +71,7 @@ pub trait CachedPage<T> where T: Sized + TryFrom<WebSite> + Clone {
         }
 
         let url = self.url(&page);
-        let document = block_on(get_document(&url));
-        let document_ref = &document.root_element();
-
-        if max == 0 {
-            let max = Self::max_from_page(&document_ref);
-            self.set_max(&max);
-        }
+        let document = self.get_page_html(page);
 
         let result = if let Ok(board) = T::try_from(WebSite { url, document }) {
             Some(board)
@@ -80,8 +79,29 @@ pub trait CachedPage<T> where T: Sized + TryFrom<WebSite> + Clone {
             None
         };
 
+        result
+    }
+
+    fn get_and_cache(&mut self, page: u16, ignore_cache: bool) -> Option<T> {
+        let result = self.get(page, ignore_cache);
         self.insert_cache(&page, result.clone());
         result
+    }
+
+    fn get_current(&self) -> Option<T> {
+        self.get(self.page(), false)
+    }
+
+    fn get_current_and_cache(&mut self) -> Option<T> {
+        self.get_and_cache(self.page(), false)
+    }
+
+    fn get_current_force(&self) -> Option<T> {
+        self.get(self.page(), true)
+    }
+
+    fn get_current_force_and_cache(&mut self) -> Option<T> {
+        self.get_and_cache(self.page(), true)
     }
 
     fn next(&mut self) -> Option<T> {
