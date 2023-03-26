@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use scraper::{Html, Selector, ElementRef};
+use serde::Serialize;
 use url::Url;
 
 use super::{user::User, WebSite, CachedPage, DN};
@@ -207,14 +208,14 @@ impl Into<Html> for Post {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Serialize)]
 pub struct PostComment {
     pub name: String,
     pub comment: String,
     pub id: String,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Serialize)]
 pub struct PostReply {
     pub id: String,
     pub desc: PostDescription,

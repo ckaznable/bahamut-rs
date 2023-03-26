@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use scraper::{Html, Selector, ElementRef};
+use serde::Serialize;
 use url::Url;
 
 use super::{DN, WebSite, UrlWithId, CachedPage};
@@ -190,7 +191,7 @@ impl Into<Html> for Board {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Serialize)]
 pub struct BoardCategoryId {
     pub id: String,
     pub sub_id: String
@@ -216,7 +217,7 @@ impl TryFrom<Url> for BoardCategoryId {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Serialize)]
 pub struct BoardCategory {
     pub name: String,
     pub id: BoardCategoryId,

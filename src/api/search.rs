@@ -1,11 +1,12 @@
 use futures::executor::block_on;
 use scraper::{ElementRef, Selector};
+use serde::Serialize;
 
 use crate::api::get_document;
 
 use super::{UrlWithId, DN};
 
-#[derive(Clone)]
+#[derive(Clone, Serialize)]
 pub struct BoardSearch;
 impl UrlWithId<&str> for BoardSearch {
     fn url(query: &str) -> url::Url {
@@ -31,7 +32,7 @@ impl BoardSearch {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Serialize)]
 pub struct SearchResult {
     pub id: String,
     pub name: String,

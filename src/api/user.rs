@@ -1,8 +1,9 @@
 use std::fmt::Display;
 
 use scraper::{Selector, ElementRef};
+use serde::Serialize;
 
-#[derive(Clone)]
+#[derive(Clone, Serialize)]
 pub enum UserRace {
     Human,
     Elf,
@@ -23,7 +24,7 @@ impl Display for UserRace {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Serialize)]
 pub struct User {
     pub id: String,
     pub race: UserRace,
