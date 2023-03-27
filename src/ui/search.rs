@@ -1,4 +1,9 @@
-use ratatui::{widgets::{StatefulWidget, Cell, Row, Table, Block, Borders}, layout::{Layout, Constraint, Rect}, buffer::Buffer, style::{Style, Modifier}};
+use ratatui::{
+    widgets::{StatefulWidget, Block, ListItem, List},
+    layout::{Layout, Constraint, Rect},
+    buffer::Buffer,
+    text::Spans
+};
 
 use super::state::SearchPageState;
 
@@ -11,28 +16,20 @@ impl StatefulWidget for SearchPageUI {
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
         let layout = Layout::default()
             .constraints([Constraint::Percentage(100)])
+            .horizontal_margin(4)
             .split(area);
 
-        let header_cells = ["分類", "看版名稱"]
+        let items: Vec<ListItem> = state.items
             .iter()
-            .map(|h| Cell::from(*h));
+            .map(|item| {
+                ListItem::new(vec![Spans::from(item.name.to_owned())])
+            })
+            .collect();
 
-        let header = Row::new(header_cells);
+        let block = Block::default();
 
-        let rows = state.items.iter().map(|item| {
-            Row::new([
-                Cell::from(item.platform.to_owned()),
-                Cell::from(item.name.to_owned()),
-            ])
-        });
-
-        let block = Block::default()
-            .borders(Borders::ALL);
-
-        Table::new(rows)
-            .header(header)
+        List::new(items)
             .block(block)
-            .highlight_style(Style::default().add_modifier(Modifier::REVERSED))
             .render(layout[0], buf, &mut state.state);
     }
 }

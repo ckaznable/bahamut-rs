@@ -6,7 +6,7 @@ use crate::api::get_document;
 
 use super::{UrlWithId, DN};
 
-#[derive(Clone, Serialize)]
+#[derive(Clone, Default, Serialize)]
 pub struct BoardSearch;
 impl UrlWithId<&str> for BoardSearch {
     fn url(query: &str) -> url::Url {

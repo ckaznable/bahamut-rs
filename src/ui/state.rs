@@ -1,5 +1,9 @@
+use std::sync::mpsc::Sender;
+
 use bahamut::api::{search::SearchResult, board::BoardPost};
-use ratatui::widgets::{ListState, TableState};
+use ratatui::widgets::ListState;
+
+use crate::channel::DataRequestMsg;
 
 pub enum Page {
     Search,
@@ -44,11 +48,19 @@ pub struct AppState {
     pub search: SearchPageState,
     pub board: BoardPageState,
     pub loading: bool,
+
+    tx: Sender<DataRequestMsg>,
 }
 
 impl AppState {
-    pub fn new() -> AppState {
-        AppState::default()
+    pub fn new(tx: Sender<DataRequestMsg>) -> AppState {
+        AppState {
+            page: Page::Search,
+            search: SearchPageState::default(),
+            board: BoardPageState::default(),
+            loading: false,
+            tx,
+        }
     }
 
     pub fn get_page(&self) -> &dyn CursorMoveable {
@@ -59,21 +71,22 @@ impl AppState {
     }
 }
 
-impl Default for AppState {
-    fn default() -> Self {
-        AppState {
-            page: Page::Search,
-            search: SearchPageState::default(),
-            board: BoardPageState::default(),
-            loading: false,
-        }
-    }
-}
-
 #[derive(Default, Clone)]
 pub struct SearchPageState {
-    pub state: TableState,
+    pub state: ListState,
     pub items: Vec<SearchResult>,
+}
+
+impl SearchPageState {
+    pub fn items(&mut self, items: Vec<SearchResult>) {
+        self.items = items;
+
+        if self.items.len() > 0 {
+            self.state.select(Some(0));
+        } else {
+            self.state.select(None);
+        }
+    }
 }
 
 impl CursorMoveable for SearchPageState {
