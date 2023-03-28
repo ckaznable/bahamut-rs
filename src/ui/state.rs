@@ -1,9 +1,23 @@
-use std::sync::mpsc::Sender;
+use std::{sync::mpsc::Sender};
 
 use bahamut::api::{search::SearchResult, board::BoardPost};
 use ratatui::widgets::ListState;
+use tui_input::Input;
 
 use crate::channel::DataRequestMsg;
+
+#[derive(Clone)]
+pub enum InputMode {
+    Normal,
+    Edit,
+    Search,
+}
+
+impl Default for InputMode {
+    fn default() -> Self {
+        InputMode::Normal
+    }
+}
 
 pub enum Page {
     Search,
@@ -75,6 +89,8 @@ impl AppState {
 pub struct SearchPageState {
     pub state: ListState,
     pub items: Vec<SearchResult>,
+    pub mode: InputMode,
+    pub input: Input,
 }
 
 impl SearchPageState {
@@ -86,6 +102,10 @@ impl SearchPageState {
         } else {
             self.state.select(None);
         }
+    }
+
+    pub fn mode(&mut self, mode: InputMode) {
+        self.mode = mode;
     }
 }
 

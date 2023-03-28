@@ -67,6 +67,8 @@ fn run_app<B: Backend>(
         };
 
         if let Ok(v) = rx.try_recv() {
+            app.loading = false;
+
             match v {
                 FetchDataMsg::SearchResult(v) => {
                     app.search.items(v);
