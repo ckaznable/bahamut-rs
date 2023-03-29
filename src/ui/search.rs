@@ -42,7 +42,7 @@ impl StatefulWidget for SearchPageUI {
         let items: Vec<ListItem> = state.items
             .iter()
             .map(|item| {
-                ListItem::new(vec![Spans::from(item.name.to_owned())])
+                ListItem::new(vec![Spans::from(item.name.as_ref())])
             })
             .collect();
 

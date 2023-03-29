@@ -37,7 +37,13 @@ pub fn handle_key(app: &mut AppState, event: KeyEvent, tx: Sender<DataRequestMsg
 
 fn handle_general_key(app: &mut AppState, event: KeyEvent, tx: Sender<DataRequestMsg>) -> KeyBindEvent {
     match event.code {
-        KeyCode::Char('q') => return KeyBindEvent::Quit,
+        KeyCode::Char('q') => {
+            match app.page {
+                Page::Search => return KeyBindEvent::Quit,
+                Page::Board => app.page = Page::Search,
+                Page::Post => app.page = Page::Board,
+            }
+        },
         _ => ()
     };
 
@@ -49,7 +55,17 @@ fn handle_search_key(app: &mut AppState, event: KeyEvent, tx: Sender<DataRequest
         InputMode::Normal => match event.code {
             KeyCode::Char('j') | KeyCode::Down => app.search.next(),
             KeyCode::Char('k') | KeyCode::Up => app.search.previous(),
-            KeyCode::Char('e') | KeyCode::Enter => app.search.mode(InputMode::Edit),
+            KeyCode::Char('a' |'e' | 'i' | 'o') => app.search.mode(InputMode::Edit),
+            KeyCode::Enter => {
+                if let Some(i) = app.search.state.selected() {
+                    if let Some(board) = app.search.items.get(i) {
+                        app.loading = true;
+                        app.board.name(board.name.to_owned());
+                        app.board.id(board.id.to_owned());
+                        tx.send(DataRequestMsg::BoardPage(board.id.to_string(), 1)).map_or(() , |_|());
+                    }
+                }
+            }
             _ => ()
         }
         InputMode::Edit => match event.code {
@@ -70,6 +86,12 @@ fn handle_search_key(app: &mut AppState, event: KeyEvent, tx: Sender<DataRequest
 }
 
 fn handle_board_key(app: &mut AppState, event: KeyEvent, tx: Sender<DataRequestMsg>) -> KeyBindEvent {
+    match event.code {
+        KeyCode::Char('j') | KeyCode::Down => app.board.next(),
+        KeyCode::Char('k') | KeyCode::Up => app.board.previous(),
+        _ => (),
+    }
+
     KeyBindEvent::None
 }
 

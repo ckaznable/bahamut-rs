@@ -1,6 +1,6 @@
-use std::{sync::mpsc::Sender};
+use std::sync::mpsc::Sender;
 
-use bahamut::api::{search::SearchResult, board::BoardPost};
+use bahamut::api::{search::SearchResult, board::{BoardPost, BoardPage}};
 use ratatui::widgets::ListState;
 use tui_input::Input;
 
@@ -57,6 +57,19 @@ pub trait CursorMoveable {
     }
 }
 
+pub trait ListStateInit<T> {
+    fn lists(&self) -> &Vec<T>;
+    fn state(&mut self) -> &mut ListState;
+
+    fn init_select(&mut self) {
+        if self.lists().len() > 0 {
+            self.state().select(Some(0));
+        } else {
+            self.state().select(None);
+        }
+    }
+}
+
 pub struct AppState {
     pub page: Page,
     pub search: SearchPageState,
@@ -80,6 +93,7 @@ impl AppState {
     pub fn get_page(&self) -> &dyn CursorMoveable {
         match self.page {
             Page::Search => &self.search,
+            Page::Board => &self.board,
             _ => todo!()
         }
     }
@@ -96,16 +110,20 @@ pub struct SearchPageState {
 impl SearchPageState {
     pub fn items(&mut self, items: Vec<SearchResult>) {
         self.items = items;
-
-        if self.items.len() > 0 {
-            self.state.select(Some(0));
-        } else {
-            self.state.select(None);
-        }
     }
 
     pub fn mode(&mut self, mode: InputMode) {
         self.mode = mode;
+    }
+}
+
+impl ListStateInit<SearchResult> for SearchPageState {
+    fn lists(&self) -> &Vec<SearchResult> {
+        &self.items
+    }
+
+    fn state(&mut self) -> &mut ListState {
+        &mut self.state
     }
 }
 
@@ -131,6 +149,32 @@ impl CursorMoveable for SearchPageState {
 pub struct BoardPageState {
     pub state: ListState,
     pub items: Vec<BoardPost>,
+    pub id: String,
+    pub name: String,
+}
+
+impl BoardPageState {
+    pub fn id(&mut self, id: String) {
+        self.id = id;
+    }
+
+    pub fn name(&mut self, name: String) {
+        self.name = name;
+    }
+
+    pub fn items(&mut self, items: Vec<BoardPost>) {
+        self.items = items;
+    }
+}
+
+impl ListStateInit<BoardPost> for BoardPageState {
+    fn lists(&self) -> &Vec<BoardPost> {
+        &self.items
+    }
+
+    fn state(&mut self) -> &mut ListState {
+        &mut self.state
+    }
 }
 
 impl CursorMoveable for BoardPageState {

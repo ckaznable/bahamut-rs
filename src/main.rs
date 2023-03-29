@@ -1,11 +1,11 @@
-use std::{error::Error, sync::mpsc::{channel, Sender, Receiver}, thread::{JoinHandle, self}, io, time::Duration};
+use std::{error::Error, sync::mpsc::{channel, Sender, Receiver}, thread::{JoinHandle, self}, io, time::Duration, collections::HashMap};
 
-use bahamut::api::search::BoardSearch;
+use bahamut::api::{search::BoardSearch, board::BoardPage, CachedPage};
 use channel::{FetchDataMsg, DataRequestMsg};
 use crossterm::{terminal::{enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode}, execute, event::{EnableMouseCapture, DisableMouseCapture, Event, self}, queue};
 use ratatui::{backend::{CrosstermBackend, Backend}, Terminal};
 use tokio::runtime::Builder;
-use ui::{state::AppState, key::handle_key, ui};
+use ui::{state::{AppState, ListStateInit, Page}, key::handle_key, ui};
 
 mod ui;
 mod channel;
@@ -72,7 +72,14 @@ fn run_app<B: Backend>(
             match v {
                 FetchDataMsg::SearchResult(v) => {
                     app.search.items(v);
+                    app.search.init_select();
+                    app.page = Page::Search;
                 },
+                FetchDataMsg::BoardPage(v) => {
+                    app.board.items(v);
+                    app.board.init_select();
+                    app.page = Page::Board;
+                }
             }
         };
     }
@@ -82,6 +89,8 @@ fn run_fetcher(tx: Sender<FetchDataMsg>, rx: Receiver<DataRequestMsg>) -> JoinHa
     let rt = Builder::new_multi_thread().enable_all().build().unwrap();
 
     thread::spawn(move || {
+        let mut board_cache: HashMap<String, BoardPage> = HashMap::new();
+
         rt.block_on(async {
             loop {
                 if let Ok(msg) = rx.recv() {
@@ -92,6 +101,24 @@ fn run_fetcher(tx: Sender<FetchDataMsg>, rx: Receiver<DataRequestMsg>) -> JoinHa
                             if let Err(_) = tx.send(FetchDataMsg::SearchResult(res)) {
                                 println!("get search result error")
                             };
+                        }
+                        DataRequestMsg::BoardPage(id, page) => {
+                            if let Some(board) = board_cache.get(&id) {
+                                if let Some(board) = board.get(page, false) {
+                                    return tx.send(FetchDataMsg::BoardPage(board.post())).map_or((), |_|());
+                                }
+                            }
+
+                            let mut board = BoardPage::from_page(id.as_ref(), page);
+                            board.init();
+
+                            let res = match board.get(page, false) {
+                                Some(board) => board.post(),
+                                None => vec!()
+                            };
+
+                            board_cache.insert(id, board);
+                            tx.send(FetchDataMsg::BoardPage(res)).map_or((), |_|());
                         }
                     };
                 };

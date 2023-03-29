@@ -29,6 +29,15 @@ impl BoardPage {
         }
     }
 
+    pub fn from_page(id: &str, page: u16) -> BoardPage {
+        BoardPage {
+            id: id.to_string(),
+            page,
+            max: 0,
+            cache: HashMap::new(),
+        }
+    }
+
     pub fn init(&mut self) {
         let document = self.get_page_html(1);
         let root = document.root_element();
