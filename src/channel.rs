@@ -1,8 +1,14 @@
 use bahamut::api::{search::SearchResult, board::BoardPost};
 
+pub struct PageData<T> {
+    pub page: u16,
+    pub max: u16,
+    pub items: Vec<T>,
+}
+
 pub enum FetchDataMsg {
     SearchResult(Vec<SearchResult>),
-    BoardPage(Vec<BoardPost>),
+    BoardPage(PageData<BoardPost>),
 }
 
 pub enum DataRequestMsg {

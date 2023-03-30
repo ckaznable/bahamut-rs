@@ -1,8 +1,8 @@
 use std::{error::Error, sync::mpsc::{channel, Sender, Receiver}, thread::{JoinHandle, self}, io, time::Duration, collections::HashMap};
 
 use bahamut::api::{search::BoardSearch, board::BoardPage, CachedPage};
-use channel::{FetchDataMsg, DataRequestMsg};
-use crossterm::{terminal::{enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode}, execute, event::{EnableMouseCapture, DisableMouseCapture, Event, self}, queue};
+use channel::{FetchDataMsg, DataRequestMsg, PageData};
+use crossterm::{terminal::{enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode}, execute, event::{EnableMouseCapture, DisableMouseCapture, Event, self}};
 use ratatui::{backend::{CrosstermBackend, Backend}, Terminal};
 use tokio::runtime::Builder;
 use ui::{state::{AppState, ListStateInit, Page}, key::handle_key, ui};
@@ -58,7 +58,7 @@ fn run_app<B: Backend>(
     loop {
         terminal.draw(|f| ui(f, &mut app))?;
 
-        if let Ok(true) = event::poll(Duration::from_secs(1)) {
+        if let Ok(true) = event::poll(Duration::from_secs_f32(0.5)) {
             if let Event::Key(event) = event::read()? {
                 if handle_key(&mut app, event, tx.clone()).is_quit() {
                     return Ok(());
@@ -76,8 +76,10 @@ fn run_app<B: Backend>(
                     app.page = Page::Search;
                 },
                 FetchDataMsg::BoardPage(v) => {
-                    app.board.items(v);
+                    app.board.items(v.items);
                     app.board.init_select();
+                    app.board.last_page(v.max);
+                    app.board.page(v.page);
                     app.page = Page::Board;
                 }
             }
@@ -103,22 +105,26 @@ fn run_fetcher(tx: Sender<FetchDataMsg>, rx: Receiver<DataRequestMsg>) -> JoinHa
                             };
                         }
                         DataRequestMsg::BoardPage(id, page) => {
-                            if let Some(board) = board_cache.get(&id) {
-                                if let Some(board) = board.get(page, false) {
-                                    return tx.send(FetchDataMsg::BoardPage(board.post())).map_or((), |_|());
+                            if let Some(board_page) = board_cache.get(&id) {
+                                if let Some(board) = board_page.get(page, false) {
+                                    let items = board.post();
+                                    let page_data = PageData { page, items, max: board_page.max };
+                                    tx.send(FetchDataMsg::BoardPage(page_data)).map_or((), |_|());
+                                    continue;
                                 }
                             }
 
                             let mut board = BoardPage::from_page(id.as_ref(), page);
                             board.init();
 
-                            let res = match board.get(page, false) {
+                            let items = match board.get(page, false) {
                                 Some(board) => board.post(),
                                 None => vec!()
                             };
 
+                            let page_data = PageData { page, items, max: board.max };
                             board_cache.insert(id, board);
-                            tx.send(FetchDataMsg::BoardPage(res)).map_or((), |_|());
+                            tx.send(FetchDataMsg::BoardPage(page_data)).map_or((), |_|());
                         }
                     };
                 };

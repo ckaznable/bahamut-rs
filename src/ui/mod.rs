@@ -3,28 +3,25 @@ pub mod key;
 pub mod search;
 pub mod board;
 pub mod loading;
+pub mod post;
 
 use ratatui::{backend::Backend, Frame, layout::{Constraint, Direction, Layout, Rect}};
 
-use self::{state::AppState, search::SearchPageUI, loading::Loading, board::BoardPageUI};
+use self::{state::AppState, search::SearchPageUI, loading::Loading, board::BoardPageUI, post::PostPageUI};
 
 pub fn ui<B: Backend>(f: &mut Frame<B>, app: &mut AppState) {
     let size = f.size();
 
-    // root layout
-    let root = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([Constraint::Percentage(100)])
-        .split(size);
-
     match app.page {
         state::Page::Search => {
-            f.render_stateful_widget(SearchPageUI::default(), root[0], &mut app.search);
+            f.render_stateful_widget(SearchPageUI::default(), size, &mut app.search);
         },
         state::Page::Board => {
-            f.render_stateful_widget(BoardPageUI, root[0], &mut app.board);
+            f.render_stateful_widget(BoardPageUI, size, &mut app.board);
         },
-        state::Page::Post => todo!(),
+        state::Page::Post => {
+            f.render_stateful_widget(PostPageUI, size, &mut app.post);
+        },
     };
 
     if app.loading {

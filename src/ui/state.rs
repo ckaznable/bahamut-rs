@@ -1,6 +1,6 @@
 use std::sync::mpsc::Sender;
 
-use bahamut::api::{search::SearchResult, board::{BoardPost, BoardPage}};
+use bahamut::api::{search::SearchResult, board::{BoardPost, BoardPage}, post::Post};
 use ratatui::widgets::ListState;
 use tui_input::Input;
 
@@ -74,6 +74,7 @@ pub struct AppState {
     pub page: Page,
     pub search: SearchPageState,
     pub board: BoardPageState,
+    pub post: PostPageState,
     pub loading: bool,
 
     tx: Sender<DataRequestMsg>,
@@ -85,6 +86,7 @@ impl AppState {
             page: Page::Search,
             search: SearchPageState::default(),
             board: BoardPageState::default(),
+            post: PostPageState::default(),
             loading: false,
             tx,
         }
@@ -151,6 +153,8 @@ pub struct BoardPageState {
     pub items: Vec<BoardPost>,
     pub id: String,
     pub name: String,
+    pub last_page: u16,
+    pub page: u16,
 }
 
 impl BoardPageState {
@@ -164,6 +168,14 @@ impl BoardPageState {
 
     pub fn items(&mut self, items: Vec<BoardPost>) {
         self.items = items;
+    }
+
+    pub fn last_page(&mut self, page: u16) {
+        self.last_page = page;
+    }
+
+    pub fn page(&mut self, page: u16) {
+        self.page = page;
     }
 }
 
@@ -192,5 +204,21 @@ impl CursorMoveable for BoardPageState {
 
     fn previous(&mut self) {
         self.state.select(Some(self.previous_index()))
+    }
+}
+
+#[derive(Default)]
+pub struct PostPageState {
+    items: Vec<Post>,
+    index: u16,
+}
+
+impl PostPageState {
+    pub fn items(&mut self, items: Vec<Post>) {
+        self.items = items;
+    }
+
+    pub fn index(&mut self, index: u16) {
+        self.index = index;
     }
 }

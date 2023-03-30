@@ -1,4 +1,4 @@
-use ratatui::{widgets::{StatefulWidget, List, Block, ListItem, Borders}, layout::{Layout, Constraint, Alignment}, style::{Style, Modifier}, text::Spans};
+use ratatui::{widgets::{StatefulWidget, List, Block, ListItem, Borders, Widget}, layout::{Layout, Constraint, Alignment}, style::{Style, Modifier}, text::Spans};
 
 use super::state::BoardPageState;
 
@@ -11,12 +11,13 @@ impl StatefulWidget for BoardPageUI {
         let layout = Layout::default()
             .constraints([
                 Constraint::Min(0),
+                Constraint::Length(1)
             ])
-            .horizontal_margin(4)
+            .horizontal_margin(1)
             .split(area);
 
         let block = Block::default()
-            .title(state.name.as_ref())
+            .title(format!("{} - 第{}頁", state.name, state.page))
             .title_alignment(Alignment::Center)
             .borders(Borders::ALL);
 
@@ -28,9 +29,14 @@ impl StatefulWidget for BoardPageUI {
             .collect();
 
         let selected_style = Style::default().add_modifier(Modifier::REVERSED);
-        List::new(items)
+        let list = List::new(items)
             .block(block)
-            .highlight_style(selected_style)
-            .render(layout[0], buf, &mut state.state);
+            .highlight_style(selected_style);
+        StatefulWidget::render(list, layout[0], buf, &mut state.state);
+
+        Block::default()
+            .title(format!("<- {} / {} ->", state.page, state.last_page))
+            .title_alignment(Alignment::Center)
+            .render(layout[1], buf);
     }
 }
