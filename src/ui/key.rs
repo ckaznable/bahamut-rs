@@ -1,6 +1,6 @@
 use std::sync::mpsc::Sender;
 
-use crossterm::event::{KeyEvent, KeyCode, Event};
+use crossterm::event::{KeyEvent, KeyCode, Event, KeyModifiers};
 use tui_input::backend::crossterm::EventHandler;
 
 use crate::channel::DataRequestMsg;
@@ -35,7 +35,11 @@ pub fn handle_key(app: &mut AppState, event: KeyEvent, tx: Sender<DataRequestMsg
     }
 }
 
-fn handle_general_key(app: &mut AppState, event: KeyEvent, tx: Sender<DataRequestMsg>) -> KeyBindEvent {
+fn handle_general_key(app: &mut AppState, event: KeyEvent, _: Sender<DataRequestMsg>) -> KeyBindEvent {
+    if let KeyEvent { code: KeyCode::Char('c'), modifiers: KeyModifiers::CONTROL, kind: _, state: _ } = event {
+        return KeyBindEvent::Quit;
+    }
+
     match event.code {
         KeyCode::Char('q') => {
             match app.page {
@@ -105,12 +109,15 @@ fn handle_board_key(app: &mut AppState, event: KeyEvent, tx: Sender<DataRequestM
                 tx.send(DataRequestMsg::BoardPage(app.board.id.to_owned(), app.board.page + 1)).map_or(() , |_|())
             }
         }
+        KeyCode::Enter => {
+
+        }
         _ => (),
     }
 
     KeyBindEvent::None
 }
 
-fn handle_post_key(mut app: &mut AppState, event: KeyEvent, tx: Sender<DataRequestMsg>) -> KeyBindEvent {
+fn handle_post_key(app: &mut AppState, event: KeyEvent, tx: Sender<DataRequestMsg>) -> KeyBindEvent {
     KeyBindEvent::None
 }
