@@ -25,7 +25,14 @@ pub fn ui<B: Backend>(f: &mut Frame<B>, app: &mut AppState) {
     };
 
     if app.loading {
-        let area = centered_rect(10, 20, size);
+        let y = if size.height < 15 {
+            25
+        } else if size.height > 25 {
+            13
+        } else {
+            15
+        };
+        let area = centered_rect(10, y, size);
         f.render_widget(Loading, area);
     }
 }
