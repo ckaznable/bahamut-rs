@@ -38,6 +38,15 @@ impl StatefulWidget for SearchPageUI {
             .block(block)
             .render(layout[0], buf);
 
+        state.cursor((
+            // Put cursor past the end of the input text
+            layout[0].x
+                + ((state.input.visual_cursor()).max(scroll) - scroll) as u16
+                + 1,
+            // Move one line down, from the border to the input line
+            layout[0].y + 1,
+        ));
+
         // search result
         let items: Vec<ListItem> = state.items
             .iter()

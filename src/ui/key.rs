@@ -42,10 +42,12 @@ fn handle_general_key(app: &mut AppState, event: KeyEvent, _: Sender<DataRequest
 
     match event.code {
         KeyCode::Char('q') => {
-            match app.page {
-                Page::Search => return KeyBindEvent::Quit,
-                Page::Board => app.page = Page::Search,
-                Page::Post => app.page = Page::Board,
+            if app.search.mode != InputMode::Edit {
+                match app.page {
+                    Page::Search => return KeyBindEvent::Quit,
+                    Page::Board => app.page = Page::Search,
+                    Page::Post => app.page = Page::Board,
+                }
             }
         },
         _ => ()

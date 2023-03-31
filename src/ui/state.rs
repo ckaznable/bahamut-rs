@@ -3,7 +3,7 @@ use ratatui::widgets::ListState;
 use tui_input::Input;
 
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub enum InputMode {
     Normal,
     Edit,
@@ -98,6 +98,7 @@ pub struct SearchPageState {
     pub items: Vec<SearchResult>,
     pub mode: InputMode,
     pub input: Input,
+    pub cursor: (u16, u16),
 }
 
 impl SearchPageState {
@@ -107,6 +108,10 @@ impl SearchPageState {
 
     pub fn mode(&mut self, mode: InputMode) {
         self.mode = mode;
+    }
+
+    pub fn cursor(&mut self, cursor: (u16, u16)) {
+        self.cursor = cursor;
     }
 }
 
