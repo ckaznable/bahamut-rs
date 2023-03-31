@@ -26,10 +26,18 @@ impl StatefulWidget for SearchPageUI {
         let block = Block::default()
             .borders(Borders::ALL)
             .title("看板搜尋");
-
         let width = layout[0].width.max(3) - 3;
         let scroll = state.input.visual_scroll(width as usize);
-        Paragraph::new(state.input.value())
+        let value = state.input.value();
+        let input_value = match state.mode {
+            InputMode::Edit => value,
+            InputMode::Normal => if value.is_empty() {
+                "輸入 'a'/'e'/'i'/'o' 開始搜尋"
+            } else {
+                value
+            }
+        };
+        Paragraph::new(input_value)
             .style(match state.mode {
                 InputMode::Edit => Style::default().fg(Color::Yellow),
                 _ => Style::default(),
