@@ -1,7 +1,7 @@
 use std::{collections::HashMap};
 
 use futures::executor::block_on;
-use scraper::{Html, ElementRef};
+use scraper::Html;
 use url::Url;
 
 pub mod post;
@@ -39,8 +39,6 @@ pub trait CachedPage<T> where T: Sized + TryFrom<WebSite> + Clone {
     fn increase_page(&mut self);
     fn decrease_page(&mut self);
     fn max(&self) -> u16;
-    fn set_max(&mut self, max: &u16);
-    fn max_from_page(document: &ElementRef) -> u16;
 
     fn is_over_min(&self) -> bool {
         self.page() == 0

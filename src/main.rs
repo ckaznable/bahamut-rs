@@ -1,6 +1,6 @@
 use std::{error::Error, sync::mpsc::{channel, Sender, Receiver}, thread::{JoinHandle, self}, io, time::Duration, collections::HashMap};
 
-use bahamut::api::{search::BoardSearch, board::BoardPage, CachedPage};
+use bahamut::api::{search::BoardSearch, board::BoardPage, CachedPage, post::{PostPage, Post}};
 use channel::{FetchDataMsg, DataRequestMsg, PageData};
 use crossterm::{terminal::{enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode}, execute, event::{EnableMouseCapture, DisableMouseCapture, Event, self}};
 use ratatui::{backend::{CrosstermBackend, Backend}, Terminal};
@@ -26,7 +26,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let fetcher = run_fetcher(tx_rev, rx_req);
 
     // ui thread
-    let app = AppState::new(tx_req.clone());
+    let app = AppState::new();
     let res = run_app(&mut terminal, app, tx_req.clone(), rx_rev);
 
     // close fetch thread
@@ -74,13 +74,20 @@ fn run_app<B: Backend>(
                     app.search.items(v);
                     app.search.init_select();
                     app.page = Page::Search;
-                },
+                }
                 FetchDataMsg::BoardPage(v) => {
                     app.board.items(v.items);
                     app.board.init_select();
                     app.board.last_page(v.max);
                     app.board.page(v.page);
                     app.page = Page::Board;
+                }
+                FetchDataMsg::PostPage(v) => {
+                    app.post.data(v.items);
+                    app.post.index(0);
+                    app.post.page(v.page);
+                    app.post.last_page(v.max);
+                    app.page = Page::Post;
                 }
             }
         };
@@ -89,9 +96,9 @@ fn run_app<B: Backend>(
 
 fn run_fetcher(tx: Sender<FetchDataMsg>, rx: Receiver<DataRequestMsg>) -> JoinHandle<()> {
     let rt = Builder::new_multi_thread().enable_all().build().unwrap();
-
     thread::spawn(move || {
         let mut board_cache: HashMap<String, BoardPage> = HashMap::new();
+        let mut post_cache: HashMap<String, PostPage> = HashMap::new();
 
         rt.block_on(async {
             loop {
@@ -104,6 +111,8 @@ fn run_fetcher(tx: Sender<FetchDataMsg>, rx: Receiver<DataRequestMsg>) -> JoinHa
                                 println!("get search result error")
                             };
                         }
+
+                        // board page request
                         DataRequestMsg::BoardPage(id, page) => {
                             if let Some(board_page) = board_cache.get(&id) {
                                 if let Some(board) = board_page.get(page, false) {
@@ -125,6 +134,30 @@ fn run_fetcher(tx: Sender<FetchDataMsg>, rx: Receiver<DataRequestMsg>) -> JoinHa
                             let page_data = PageData { page, items, max: board.max };
                             board_cache.insert(id, board);
                             tx.send(FetchDataMsg::BoardPage(page_data)).map_or((), |_|());
+                        }
+
+                        // post page request
+                        DataRequestMsg::PostPage(id, pid, page) => {
+                            let cache_key = format!("{}:{}", id, pid);
+                            if let Some(post_page) = post_cache.get(&cache_key) {
+                                if let Some(post) = post_page.get(page, false) {
+                                    let page_data = PageData { page, items: post, max: post_page.max };
+                                    tx.send(FetchDataMsg::PostPage(page_data)).map_or((), |_|());
+                                    continue;
+                                }
+                            }
+
+                            let mut post_page = PostPage::new(id.as_ref(), pid.as_ref());
+                            post_page.init();
+
+                            let items = match post_page.get(page, false) {
+                                None => Post::default(),
+                                Some(post) => post,
+                            };
+
+                            let page_data = PageData { page, items, max: post_page.max };
+                            post_cache.insert(cache_key, post_page);
+                            tx.send(FetchDataMsg::PostPage(page_data)).map_or((), |_|())
                         }
                     };
                 };

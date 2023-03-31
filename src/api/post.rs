@@ -32,6 +32,13 @@ impl PostPage {
         }
     }
 
+    pub fn init(&mut self) {
+        let document = self.get_page_html(1);
+        let root = document.root_element();
+        let max = PostPage::try_page_from_html(&root).map_or(0, |v|v);
+        self.max = max;
+    }
+
     fn try_page_from_html(document: &ElementRef) -> Option<u16> {
         let selector = Selector::parse(".BH-pagebtnA a").unwrap();
         let max: u16 = document
@@ -76,20 +83,9 @@ impl CachedPage<Post> for PostPage {
     fn max(&self) -> u16 {
         self.max
     }
-
-    fn set_max(&mut self, max: &u16) {
-        self.max = *max;
-    }
-
-    fn max_from_page(document: &ElementRef) -> u16 {
-        match PostPage::try_page_from_html(document) {
-            None => 0,
-            Some(v) => v
-        }
-    }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct Post {
     pub id: String,
     pub title: String,
@@ -97,7 +93,7 @@ pub struct Post {
 }
 
 impl Post {
-    fn posts(document: &ElementRef) -> Vec<PostContent> {
+    pub fn posts(document: &ElementRef) -> Vec<PostContent> {
         let selector = Post::get_root_elm_selector();
         document.select(&selector)
             .filter_map(|dom| {

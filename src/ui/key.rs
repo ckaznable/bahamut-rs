@@ -83,7 +83,6 @@ fn handle_search_key(app: &mut AppState, event: KeyEvent, tx: Sender<DataRequest
                 app.search.input.handle_event(&Event::Key(event));
             }
         },
-        InputMode::Search => todo!(),
     }
 
     KeyBindEvent::None
@@ -110,7 +109,11 @@ fn handle_board_key(app: &mut AppState, event: KeyEvent, tx: Sender<DataRequestM
             }
         }
         KeyCode::Enter => {
-
+            if let Some(v) = app.board.state.selected() {
+                if let Some(post) = app.board.items.get(v) {
+                    tx.send(DataRequestMsg::PostPage(app.board.id.to_owned(), post.id.to_owned(), 1)).map_or((), |_|())
+                }
+            }
         }
         _ => (),
     }

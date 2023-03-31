@@ -81,17 +81,6 @@ impl CachedPage<Board> for BoardPage {
     fn max(&self) -> u16 {
         self.max
     }
-
-    fn set_max(&mut self, max: &u16) {
-        self.max = *max;
-    }
-
-    fn max_from_page(document: &ElementRef) -> u16 {
-        match BoardPage::try_page_from_html(document) {
-            None => 0,
-            Some(v) => v
-        }
-    }
 }
 
 pub struct Board {
