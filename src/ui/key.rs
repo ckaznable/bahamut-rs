@@ -76,8 +76,11 @@ fn handle_search_key(app: &mut AppState, event: KeyEvent, tx: Sender<DataRequest
             KeyCode::Esc => app.search.mode(InputMode::Normal),
             KeyCode::Enter => {
                 app.search.mode(InputMode::Normal);
-                app.loading = true;
-                tx.send(DataRequestMsg::SearchResult(app.search.input.value().into())).map_or((), |_|());
+                let value = app.search.input.value();
+                if !value.is_empty() {
+                    app.loading = true;
+                    tx.send(DataRequestMsg::SearchResult(value.into())).map_or((), |_|());
+                }
             }
             _ => {
                 app.search.input.handle_event(&Event::Key(event));
@@ -111,6 +114,7 @@ fn handle_board_key(app: &mut AppState, event: KeyEvent, tx: Sender<DataRequestM
         KeyCode::Enter => {
             if let Some(v) = app.board.state.selected() {
                 if let Some(post) = app.board.items.get(v) {
+                    app.loading = true;
                     tx.send(DataRequestMsg::PostPage(app.board.id.to_owned(), post.id.to_owned(), 1)).map_or((), |_|())
                 }
             }
@@ -121,6 +125,30 @@ fn handle_board_key(app: &mut AppState, event: KeyEvent, tx: Sender<DataRequestM
     KeyBindEvent::None
 }
 
-fn handle_post_key(app: &mut AppState, event: KeyEvent, tx: Sender<DataRequestMsg>) -> KeyBindEvent {
+fn handle_post_key(app: &mut AppState, event: KeyEvent, _: Sender<DataRequestMsg>) -> KeyBindEvent {
+    match event.code {
+        KeyCode::Char('j') | KeyCode::Down | KeyCode::PageDown => {
+            app.post.next();
+        },
+        KeyCode::Char('k') | KeyCode::Up | KeyCode::PageUp => app.post.previous(),
+        _ => ()
+    };
+
+    match event {
+        KeyEvent {
+            code,
+            modifiers: KeyModifiers::CONTROL,
+            kind: _,
+            state: _,
+        } => match code {
+            KeyCode::Char('f') => {
+                app.post.next();
+            },
+            KeyCode::Char('b') => app.post.previous(),
+            _ => ()
+        }
+        _ => ()
+    };
+
     KeyBindEvent::None
 }

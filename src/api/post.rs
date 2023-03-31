@@ -100,7 +100,7 @@ impl Post {
                 Some(
                     PostContent {
                         desc: PostContent::try_desc_from_html(&dom)?,
-                        user: User::default(),
+                        user: User::try_from(&dom).map_or(None, |x|Some(x))?,
                         floor: PostContent::try_floor_from_html(&dom)?,
                         date: PostContent::try_date_from_html(&dom)?,
                     }

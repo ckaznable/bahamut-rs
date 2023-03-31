@@ -25,7 +25,7 @@ pub fn ui<B: Backend>(f: &mut Frame<B>, app: &mut AppState) {
     };
 
     if app.loading {
-        let y = if size.height < 15 {
+        let y = if size.height < 18 {
             25
         } else if size.height > 25 {
             13

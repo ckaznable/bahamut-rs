@@ -1,4 +1,4 @@
-use bahamut::api::{search::SearchResult, board::BoardPost, post::Post};
+use bahamut::api::{search::SearchResult, board::BoardPost, post::{Post, PostContent}};
 use ratatui::widgets::ListState;
 use tui_input::Input;
 
@@ -200,10 +200,10 @@ impl CursorMoveable for BoardPageState {
 
 #[derive(Default)]
 pub struct PostPageState {
-    data: Post,
-    index: u16,
-    page: u16,
-    last_page: u16,
+    pub data: Post,
+    pub index: u16,
+    pub page: u16,
+    pub last_page: u16,
 }
 
 impl PostPageState {
@@ -221,5 +221,25 @@ impl PostPageState {
 
     pub fn last_page(&mut self, page: u16) {
         self.last_page = page;
+    }
+
+    pub fn next(&mut self) -> Option<()> {
+        let next_index = (self.index + 1) as usize;
+        if self.index < self.data.posts.len() as u16 && self.data.posts.get(next_index).is_some() {
+            self.index = next_index as u16;
+            Some(())
+        } else {
+            None
+        }
+    }
+
+    pub fn previous(&mut self) {
+        if self.index > 0 {
+            self.index -= 1;
+        }
+    }
+
+    pub fn current(&self) -> Option<&PostContent> {
+        self.data.posts.get(self.index as usize)
     }
 }
