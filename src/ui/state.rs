@@ -209,11 +209,16 @@ pub struct PostPageState {
     pub index: u16,
     pub page: u16,
     pub last_page: u16,
+    pub url: String,
 }
 
 impl PostPageState {
     pub fn data(&mut self, data: Post) {
         self.data = data;
+    }
+
+    pub fn chain_posts(&mut self, posts: Vec<PostContent>) {
+        self.data.posts.extend(posts);
     }
 
     pub fn index(&mut self, index: u16) {
@@ -229,7 +234,7 @@ impl PostPageState {
     }
 
     pub fn next(&mut self) -> Option<()> {
-        let next_index = (self.index + 1) as usize;
+        let next_index = self.next_index();
         if self.index < self.data.posts.len() as u16 && self.data.posts.get(next_index).is_some() {
             self.index = next_index as u16;
             Some(())
@@ -242,6 +247,19 @@ impl PostPageState {
         if self.index > 0 {
             self.index -= 1;
         }
+    }
+
+    pub fn has_next(&self) -> bool {
+        let next_index = self.next_index();
+        if self.data.posts.get(next_index).is_some() {
+            true
+        } else {
+            self.page < self.last_page
+        }
+    }
+
+    fn next_index(&self) -> usize {
+        ( self.index + 1 ) as usize
     }
 
     pub fn current(&self) -> Option<&PostContent> {

@@ -117,7 +117,8 @@ fn handle_board_key(app: &mut AppState, event: KeyEvent, tx: Sender<DataRequestM
             if let Some(v) = app.board.state.selected() {
                 if let Some(post) = app.board.items.get(v) {
                     app.loading = true;
-                    tx.send(DataRequestMsg::PostPage(app.board.id.to_owned(), post.id.to_owned(), 1)).map_or((), |_|())
+                    app.post.url = post.url.to_string();
+                    tx.send(DataRequestMsg::PostPage(post.url.to_string(), 1)).map_or((), |_|())
                 }
             }
         }
@@ -127,10 +128,13 @@ fn handle_board_key(app: &mut AppState, event: KeyEvent, tx: Sender<DataRequestM
     KeyBindEvent::None
 }
 
-fn handle_post_key(app: &mut AppState, event: KeyEvent, _: Sender<DataRequestMsg>) -> KeyBindEvent {
+fn handle_post_key(app: &mut AppState, event: KeyEvent, tx: Sender<DataRequestMsg>) -> KeyBindEvent {
     match event.code {
         KeyCode::Char('j') | KeyCode::Down | KeyCode::PageDown => {
-            app.post.next();
+            if app.post.next().is_none() && app.post.has_next() {
+                app.loading = true;
+                tx.send(DataRequestMsg::PostPage(app.post.url.to_owned(), app.post.page + 1)).map_or((), |_|());
+            }
         },
         KeyCode::Char('k') | KeyCode::Up | KeyCode::PageUp => app.post.previous(),
         _ => ()

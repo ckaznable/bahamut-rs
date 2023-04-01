@@ -1,6 +1,6 @@
 use std::{error::Error, sync::mpsc::{channel, Sender, Receiver}, thread::{JoinHandle, self}, io, time::Duration, collections::HashMap};
 
-use bahamut::api::{search::BoardSearch, board::BoardPage, CachedPage, post::{PostPage, Post}};
+use bahamut::api::{search::BoardSearch, board::BoardPage, CachedPage, post::{PostPage, Post, PostPageUrlParameter}};
 use channel::{FetchDataMsg, DataRequestMsg, PageData};
 use crossterm::{terminal::{enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode}, execute, event::{EnableMouseCapture, DisableMouseCapture, Event, self}};
 use ratatui::{backend::{CrosstermBackend, Backend}, Terminal};
@@ -83,11 +83,17 @@ fn run_app<B: Backend>(
                     app.page = Page::Board;
                 }
                 FetchDataMsg::PostPage(v) => {
-                    app.post.data(v.items);
-                    app.post.index(0);
-                    app.post.page(v.page);
-                    app.post.last_page(v.max);
-                    app.page = Page::Post;
+                    if v.page == 1 {
+                        app.post.data(v.items);
+                        app.post.index(0);
+                        app.post.page(v.page);
+                        app.post.last_page(v.max);
+                        app.page = Page::Post;
+                    } else {
+                        app.post.chain_posts(v.items.posts);
+                        app.post.page(v.page);
+                        app.post.next();
+                    }
                 }
             }
         };
@@ -137,8 +143,8 @@ fn run_fetcher(tx: Sender<FetchDataMsg>, rx: Receiver<DataRequestMsg>) -> JoinHa
                         }
 
                         // post page request
-                        DataRequestMsg::PostPage(id, pid, page) => {
-                            let cache_key = format!("{}:{}", id, pid);
+                        DataRequestMsg::PostPage(url, page) => {
+                            let cache_key = url.to_owned();
                             if let Some(post_page) = post_cache.get(&cache_key) {
                                 if let Some(post) = post_page.get(page, false) {
                                     let page_data = PageData { page, items: post, max: post_page.max };
@@ -147,7 +153,8 @@ fn run_fetcher(tx: Sender<FetchDataMsg>, rx: Receiver<DataRequestMsg>) -> JoinHa
                                 }
                             }
 
-                            let mut post_page = PostPage::new(id.as_ref(), pid.as_ref());
+                            let param = PostPageUrlParameter::try_from(url).unwrap();
+                            let mut post_page = PostPage::try_from(param).unwrap();
                             post_page.init();
 
                             let items = match post_page.get(page, false) {

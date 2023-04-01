@@ -15,6 +15,6 @@ pub enum FetchDataMsg {
 pub enum DataRequestMsg {
     SearchResult(String),
     BoardPage(String, u16),
-    PostPage(String, String, u16),
+    PostPage(String, u16),
     End,
 }

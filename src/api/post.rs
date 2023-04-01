@@ -12,11 +12,49 @@ pub trait CommentReadable {
 
 pub type PostDescription = Vec<String>;
 
+#[derive(Default)]
+pub struct PostPageUrlParameter {
+    board_id: String,
+    id: String,
+    floor: u16,
+}
+
+impl TryFrom<String> for PostPageUrlParameter {
+    type Error = &'static str;
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        let url = Url::parse(value.as_str()).or_else(|_|Err("invalid url string"))?;
+        PostPageUrlParameter::try_from(url).or_else(|_|Err(""))
+    }
+}
+
+impl TryFrom<Url> for PostPageUrlParameter {
+    type Error = &'static str;
+    fn try_from(url: Url) -> Result<Self, Self::Error> {
+        let mut ppup = PostPageUrlParameter::default();
+        url.query_pairs().for_each(|(k, v)| {
+            if k == "snA" {
+                ppup.id = v.to_string();
+            }
+
+            if k == "bsn" {
+                ppup.board_id = v.to_string();
+            }
+
+            if k == "tnum" {
+                ppup.floor = v.to_string().parse::<u16>().map_or(0, |v|v);
+            }
+        });
+
+        Ok(ppup)
+    }
+}
+
 pub struct PostPage {
     pub board_id: String,
     pub id: String,
     pub page: u16,
     pub max: u16,
+    pub floor: u16,
 
     cache: HashMap<u16, Option<Post>>,
 }
@@ -28,6 +66,7 @@ impl PostPage {
             id: id.to_string(),
             page: 1,
             max: 0,
+            floor: 0,
             cache: HashMap::new(),
         }
     }
@@ -37,6 +76,10 @@ impl PostPage {
         let root = document.root_element();
         let max = PostPage::try_page_from_html(&root).map_or(0, |v|v);
         self.max = max;
+    }
+
+    pub fn floor(&mut self, floor: u16) {
+        self.floor = floor;
     }
 
     fn try_page_from_html(document: &ElementRef) -> Option<u16> {
@@ -64,7 +107,7 @@ impl CachedPage<Post> for PostPage {
     }
 
     fn url(&self, page: &u16) -> Url {
-        let url = format!("{}C.php?bsn={}&snA={}&page={}", DN, self.board_id, self.id, page);
+        let url = format!("{}C.php?bsn={}&snA={}&page={}&tnum={}", DN, self.board_id, self.id, page, self.floor);
         Url::parse(url.as_ref()).unwrap()
     }
 
@@ -85,11 +128,46 @@ impl CachedPage<Post> for PostPage {
     }
 }
 
+impl TryFrom<PostPageUrlParameter> for PostPage {
+    type Error = &'static str;
+
+    fn try_from(value: PostPageUrlParameter) -> Result<Self, Self::Error> {
+        let PostPageUrlParameter { board_id, id, floor } = value;
+        let mut page = PostPage::new(board_id.as_ref(), id.as_ref());
+        page.floor(floor);
+        Ok(page)
+    }
+}
+
+pub struct PostPageRef {
+    pub board_id: String,
+    pub id: String,
+    pub page: u16,
+    pub max: u16,
+    pub floor: u16,
+}
+
+impl TryFrom<&PostPage> for PostPageRef {
+    type Error = &'static str;
+    fn try_from(value: &PostPage) -> Result<Self, Self::Error> {
+        Ok(
+            PostPageRef {
+                board_id: value.board_id.to_owned(),
+                id: value.id.to_owned(),
+                page: value.page,
+                max: value.page,
+                floor: value.floor,
+            }
+        )
+    }
+}
+
 #[derive(Clone, Default)]
 pub struct Post {
     pub id: String,
     pub title: String,
     pub posts: Vec<PostContent>,
+    pub floor: u16,
 }
 
 impl Post {
@@ -121,6 +199,14 @@ impl Post {
         Some(query.to_string())
     }
 
+    fn try_last_floor_from_url(url: &Url) -> Option<u16> {
+        let query = url.query_pairs()
+            .find(|(k, _)| k == "tnum")
+            .map(|(_, v)|v)?;
+
+        Some(query.parse().unwrap())
+    }
+
     fn try_title_from_html(document: &ElementRef) -> Option<String> {
         let selector = Selector::parse(".c-post__header__title").unwrap();
         let title = document
@@ -131,7 +217,6 @@ impl Post {
 
         Some(title)
     }
-
 }
 
 impl TryFrom<WebSite> for Post {
@@ -147,6 +232,7 @@ impl TryFrom<WebSite> for Post {
 
         let post = Post {
             id: Post::try_id_from_url(&url).ok_or("can't get id")?,
+            floor: Post::try_last_floor_from_url(&url).ok_or("can't get last floor")?,
             title: Post::try_title_from_html(&top_post_elm).ok_or("post title invalid")?,
             posts: Post::posts(&document.root_element()),
         };

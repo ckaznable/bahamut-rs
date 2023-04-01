@@ -246,6 +246,8 @@ pub struct BoardPost {
     pub category: BoardCategory,
     pub gp: u16,
     pub reply: u16,
+    pub floor: u16,
+    pub url: String,
 }
 
 impl Default for BoardPost {
@@ -256,8 +258,10 @@ impl Default for BoardPost {
             title: empty.to_string(),
             date: empty.to_string(),
             desc: empty.to_string(),
+            url: empty.to_string(),
             gp: 0,
             reply: 0,
+            floor: 0,
             category: BoardCategory {
                 name: empty.to_string(),
                 id: BoardCategoryId {
@@ -272,6 +276,13 @@ impl Default for BoardPost {
 impl UrlWithId<(&str, &str)> for BoardPost {
     fn url(p: (&str, &str)) -> Url {
         let url = format!("{}{}?bsn={}&snA={}", DN, "B.php", p.0, p.1);
+        Url::parse(url.as_ref()).expect("invalid url")
+    }
+}
+
+impl UrlWithId<(&str, &str, u16)> for BoardPost {
+    fn url(p: (&str, &str, u16)) -> Url {
+        let url = format!("{}{}?bsn={}&snA={}&tnum={}", DN, "B.php", p.0, p.1, p.2);
         Url::parse(url.as_ref()).expect("invalid url")
     }
 }
@@ -311,6 +322,11 @@ impl BoardPost {
         self.category = category;
         self
     }
+
+    pub fn floor(&mut self, floor: u16) -> &Self {
+        self.floor = floor;
+        self
+    }
 }
 
 impl TryFrom<ElementRef<'_>> for BoardPost {
@@ -324,6 +340,8 @@ impl TryFrom<ElementRef<'_>> for BoardPost {
         if let Some(dom) = elm.select(&selector).next() {
             let url = dom.value().attr("href").unwrap();
             let url = format!("{}/{}", DN, url);
+            post.url = url.to_owned();
+
             Url::parse(url.as_str())
                 .unwrap()
                 .query_pairs()
@@ -331,6 +349,10 @@ impl TryFrom<ElementRef<'_>> for BoardPost {
                 .for_each(|(k, v)| {
                     if k == "snA" {
                         post.id(v.to_string());
+                    }
+
+                    if k == "tnum" {
+                        post.floor(v.parse::<u16>().map_or(0, |v|v));
                     }
                 });
         }
