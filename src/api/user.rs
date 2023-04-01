@@ -82,18 +82,21 @@ impl User {
     }
 
     fn try_race_from_html(document: &ElementRef) -> Option<UserRace> {
-        let selector = Selector::parse(".userrace").unwrap();
+        let selector = Selector::parse(".userrace img").unwrap();
         let race = document
             .select(&selector)
             .next()?
             .value()
-            .attr("data-original-title")?;
+            .attr("src")?
+            .split("/")
+            .last()
+            .unwrap();
 
         let race = match race {
-            "人類" => UserRace::Human,
-            "矮人" => UserRace::Dwarf,
-            "妖精" => UserRace::Elf,
-            "獸人" => UserRace::Ork,
+            "human.png" => UserRace::Human,
+            "hobbit.png" => UserRace::Dwarf,
+            "fairy.png" => UserRace::Elf,
+            "orc.png" => UserRace::Ork,
             _ => UserRace::Unknown
         };
 
