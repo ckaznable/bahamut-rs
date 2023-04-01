@@ -28,6 +28,7 @@ impl StatefulWidget for PostPageUI {
         Paragraph::new(vec![
             Spans::from(current.user.id.as_ref()),
             Spans::from(current.user.name.as_ref()),
+            Spans::from(current.user.carrer.to_string()),
             Spans::from(current.user.race.to_string()),
             Spans::from(format!("lv.{}", current.user.lv.to_string())),
         ])

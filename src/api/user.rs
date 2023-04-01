@@ -25,9 +25,39 @@ impl Display for UserRace {
 }
 
 #[derive(Clone, Serialize)]
+pub enum UserCareer {
+    Noob,
+    Sword,
+    Archer,
+    Preist,
+    Wizard,
+    Fighter,
+    Business,
+    Assassin,
+    Unknown,
+}
+
+impl Display for UserCareer {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            UserCareer::Noob => write!(f, "初心者"),
+            UserCareer::Sword => write!(f, "劍士"),
+            UserCareer::Archer => write!(f, "弓箭手"),
+            UserCareer::Preist => write!(f, "僧侶"),
+            UserCareer::Wizard => write!(f, "法師"),
+            UserCareer::Fighter => write!(f, "武鬥家"),
+            UserCareer::Business => write!(f, "商人"),
+            UserCareer::Assassin => write!(f, "盜賊"),
+            UserCareer::Unknown => write!(f, "未知"),
+        }
+    }
+}
+
+#[derive(Clone, Serialize)]
 pub struct User {
     pub id: String,
     pub race: UserRace,
+    pub carrer: UserCareer,
     pub name: String,
     pub lv: u8,
 }
@@ -38,6 +68,7 @@ impl Default for User {
         User {
             id: empty.to_string(),
             race: UserRace::Dwarf,
+            carrer: UserCareer::Noob,
             name: empty.to_string(),
             lv: 1,
         }
@@ -89,8 +120,7 @@ impl User {
             .value()
             .attr("src")?
             .split("/")
-            .last()
-            .unwrap();
+            .last()?;
 
         let race = match race {
             "human.png" => UserRace::Human,
@@ -101,6 +131,31 @@ impl User {
         };
 
         Some(race)
+    }
+
+    fn try_crarrer_from_html(document: &ElementRef) -> Option<UserCareer> {
+        let selector = Selector::parse(".usercareer img").unwrap();
+        let crarrer = document
+            .select(&selector)
+            .next()?
+            .value()
+            .attr("src")?
+            .split("/")
+            .last()?;
+
+        let crarrer = match crarrer {
+            "noob.png" => UserCareer::Noob,
+            "sword.png" => UserCareer::Sword,
+            "fighter.png" => UserCareer::Fighter,
+            "business.png" => UserCareer::Business,
+            "wizard.png" => UserCareer::Wizard,
+            "preist.png" => UserCareer::Preist,
+            "archer.png" => UserCareer::Archer,
+            "assassin.png" => UserCareer::Assassin,
+            _ => UserCareer::Unknown
+        };
+
+        Some(crarrer)
     }
 }
 
@@ -113,6 +168,7 @@ impl TryFrom<&ElementRef<'_>> for User {
             id: User::try_id_from_html(&document).ok_or("user id invalid")?,
             name: User::try_name_from_html(&document).ok_or("user name invalid")?,
             race: User::try_race_from_html(&document).map_or(UserRace::Unknown, |x|x),
+            carrer: User::try_crarrer_from_html(&document).map_or(UserCareer::Unknown, |x|x),
         };
 
         Ok(user)
