@@ -358,7 +358,7 @@ impl TryFrom<ElementRef<'_>> for BoardPost {
         }
 
         // title
-        let selector = Selector::parse(".b-list__tile").expect("parse selector error");
+        let selector = Selector::parse(".b-list__main__title").expect("parse selector error");
         if let Some(dom) = elm.select(&selector).next() {
             post.title(dom.text().collect::<String>().trim().into());
         } else {
