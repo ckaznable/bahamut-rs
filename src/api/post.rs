@@ -280,11 +280,49 @@ impl PostContent {
 
     fn try_desc_from_html(document: &ElementRef) -> Option<PostDescription> {
         let selector = Selector::parse(".c-article__content").unwrap();
+        let text_selector = Selector::parse("div").unwrap();
+
         let desc = document
             .select(&selector)
-            .next()?
-            .text()
-            .map(|s|s.to_string())
+            .filter_map(|el| {
+                let content = el.select(&text_selector);
+                let is_pure_text = content.clone().next().is_none();
+
+                if is_pure_text {
+                    return Some(
+                        el.text().map(|s|s.to_string()).collect()
+                    );
+                }
+
+                let text = content.filter_map(|el| {
+                    // youtube
+                    let yt_selector = Selector::parse(".video-youtube iframe").unwrap();
+                    let yt = el.select(&yt_selector).next();
+                    if yt.is_some() {
+                        return Some(vec![yt.unwrap().value().attr("data-src")?.to_string()]);
+                    }
+
+                    // image
+                    let img_selector = Selector::parse("a img").unwrap();
+                    let img_dom = el.select(&img_selector);
+                    let img = img_dom.clone().next();
+                    if img.is_some() {
+                        return Some(
+                            img_dom.map(|_img| {
+                                _img.value().attr("data-src").unwrap().to_string()
+                            })
+                            .collect::<Vec<String>>()
+                        )
+                    }
+
+                    Some(vec![el.text().collect::<String>()])
+                })
+                .flatten()
+                .collect::<PostDescription>();
+
+                Some(text)
+            })
+            .flatten()
             .collect::<PostDescription>();
 
         Some(desc)

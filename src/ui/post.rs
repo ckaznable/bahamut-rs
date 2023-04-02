@@ -1,5 +1,5 @@
 use ratatui::{
-    widgets::{StatefulWidget, Block, Paragraph, Widget, Borders},
+    widgets::{StatefulWidget, Block, Paragraph, Widget, Borders, Wrap},
     layout::{Layout, Constraint, Rect, Direction},
     buffer::Buffer,
     text::Spans
@@ -57,6 +57,7 @@ impl StatefulWidget for PostPageUI {
             .map(|s| Spans::from(s.to_owned()))
             .collect();
         Paragraph::new(desc)
+            .wrap(Wrap { trim: false })
             .block(Block::default().borders(Borders::ALL))
             .render(layout[1], buf);
     }
