@@ -17,12 +17,20 @@ impl StatefulWidget for PostPageUI {
         let current = state.current().unwrap();
 
         let layout = Layout::default()
-            .direction(Direction::Horizontal)
+            .direction(Direction::Vertical)
             .constraints([
-                Constraint::Percentage(15),
+                Constraint::Length(6),
                 Constraint::Min(0),
             ])
             .split(area);
+
+        let top = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([
+                Constraint::Percentage(25),
+                Constraint::Min(0),
+            ])
+            .split(layout[0]);
 
         // user
         Paragraph::new(vec![
@@ -33,14 +41,7 @@ impl StatefulWidget for PostPageUI {
             Spans::from(format!("lv.{}", current.user.lv.to_string())),
         ])
         .block(Block::default().borders(Borders::ALL))
-        .render(layout[0], buf);
-
-        let right = Layout::default()
-            .constraints([
-                Constraint::Length(5),
-                Constraint::Min(0),
-            ])
-            .split(layout[1]);
+        .render(top[0], buf);
 
         Paragraph::new(vec![
             Spans::from(state.data.title.as_ref()),
@@ -48,7 +49,7 @@ impl StatefulWidget for PostPageUI {
             Spans::from(current.date.as_ref())
         ])
         .block(Block::default().borders(Borders::ALL))
-        .render(right[0], buf);
+        .render(top[1], buf);
 
         // desc
         let desc: Vec<Spans> = current.desc
@@ -57,6 +58,6 @@ impl StatefulWidget for PostPageUI {
             .collect();
         Paragraph::new(desc)
             .block(Block::default().borders(Borders::ALL))
-            .render(right[1], buf);
+            .render(layout[1], buf);
     }
 }
