@@ -135,11 +135,15 @@ impl CursorMoveable for SearchPageState {
     }
 
     fn next(&mut self) {
-        self.state.select(Some(self.next_index()))
+        if self.items.len() > 0 {
+            self.state.select(Some(self.next_index()))
+        }
     }
 
     fn previous(&mut self) {
-        self.state.select(Some(self.previous_index()))
+        if self.items.len() > 0 {
+            self.state.select(Some(self.previous_index()))
+        }
     }
 }
 
