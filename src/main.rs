@@ -30,8 +30,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let res = run_app(&mut terminal, app, tx_req.clone(), rx_rev);
 
     // close fetch thread
-    tx_req.send(DataRequestMsg::End).unwrap_or_else(|_|());
-    fetcher.join().unwrap_or_else(|_|());
+    tx_req.send(DataRequestMsg::End).unwrap_or(());
+    fetcher.join().unwrap_or(());
 
     // restore terminal
     disable_raw_mode()?;
@@ -111,10 +111,10 @@ fn run_fetcher(tx: Sender<FetchDataMsg>, rx: Receiver<DataRequestMsg>) -> JoinHa
             loop {
                 if let Ok(msg) = rx.recv() {
                     match msg {
-                        DataRequestMsg::End => return (),
+                        DataRequestMsg::End => return,
                         DataRequestMsg::SearchResult(query) => {
                             let res = BoardSearch::get_search_result(query.as_ref());
-                            if let Err(_) = tx.send(FetchDataMsg::SearchResult(res)) {
+                            if tx.send(FetchDataMsg::SearchResult(res)).is_err() {
                                 println!("get search result error")
                             };
                         }

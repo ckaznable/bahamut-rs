@@ -58,7 +58,7 @@ pub trait ListStateInit<T> {
     fn state(&mut self) -> &mut ListState;
 
     fn init_select(&mut self) {
-        if self.lists().len() > 0 {
+        if !self.lists().is_empty() {
             self.state().select(Some(0));
         } else {
             self.state().select(None);
@@ -135,13 +135,13 @@ impl CursorMoveable for SearchPageState {
     }
 
     fn next(&mut self) {
-        if self.items.len() > 0 {
+        if !self.items.is_empty() {
             self.state.select(Some(self.next_index()))
         }
     }
 
     fn previous(&mut self) {
-        if self.items.len() > 0 {
+        if !self.items.is_empty() {
             self.state.select(Some(self.previous_index()))
         }
     }

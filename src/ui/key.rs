@@ -14,8 +14,8 @@ pub enum KeyBindEvent {
 }
 
 impl KeyBindEvent {
-    pub fn is_quit(self) -> bool {
-        self == KeyBindEvent::Quit
+    pub fn is_quit(&self) -> bool {
+        *self == KeyBindEvent::Quit
     }
 }
 
@@ -29,9 +29,9 @@ pub fn handle_key(app: &mut AppState, event: KeyEvent, tx: Sender<DataRequestMsg
     }
 
     match app.page {
-        Page::Search => handle_search_key(app, event, tx.clone()),
-        Page::Board => handle_board_key(app, event, tx.clone()),
-        Page::Post => handle_post_key(app, event, tx.clone()),
+        Page::Search => handle_search_key(app, event, tx),
+        Page::Board => handle_board_key(app, event, tx),
+        Page::Post => handle_post_key(app, event, tx),
     }
 }
 
