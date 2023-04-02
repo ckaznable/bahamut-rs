@@ -58,7 +58,8 @@ fn run_app<B: Backend>(
     loop {
         terminal.draw(|f| ui(f, &mut app))?;
 
-        if let Ok(true) = event::poll(Duration::from_secs_f32(0.5)) {
+        let poll_sec: f32 = if app.loading { 0.1 } else { 1000.0 };
+        if let Ok(true) = event::poll(Duration::from_secs_f32(poll_sec)) {
             if let Event::Key(event) = event::read()? {
                 if handle_key(&mut app, event, tx.clone()).is_quit() {
                     return Ok(());
@@ -96,7 +97,7 @@ fn run_app<B: Backend>(
                     }
                 }
             }
-        };
+        }
     }
 }
 
