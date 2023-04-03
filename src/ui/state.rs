@@ -214,6 +214,8 @@ pub struct PostPageState {
     pub page: u16,
     pub last_page: u16,
     pub url: String,
+    pub scroll_offset: usize,
+    pub scroll_size: usize,
 }
 
 impl PostPageState {
@@ -237,9 +239,15 @@ impl PostPageState {
         self.last_page = page;
     }
 
+    pub fn first(&mut self) {
+        self.scroll_offset = 0;
+        self.index = 0;
+    }
+
     pub fn next(&mut self) -> Option<()> {
         let next_index = self.next_index();
         if self.index < self.data.posts.len() as u16 && self.data.posts.get(next_index).is_some() {
+            self.scroll_offset = 0;
             self.index = next_index as u16;
             Some(())
         } else {
@@ -249,6 +257,7 @@ impl PostPageState {
 
     pub fn previous(&mut self) {
         if self.index > 0 {
+            self.scroll_offset = 0;
             self.index -= 1;
         }
     }
@@ -268,5 +277,29 @@ impl PostPageState {
 
     pub fn current(&self) -> Option<&PostContent> {
         self.data.posts.get(self.index as usize)
+    }
+
+    pub fn scroll_up(&mut self) {
+        if self.scroll_offset > 0 {
+            self.scroll_offset -= 1;
+        }
+    }
+
+    pub fn scroll_down(&mut self) {
+        if self.scrollable() {
+            self.scroll_offset += 1;
+        }
+    }
+
+    pub fn scroll_size(&mut self, size: usize) {
+        self.scroll_size = size;
+    }
+
+    fn scrollable(&self) -> bool {
+        if let Some(desc) = self.current() {
+            desc.desc.len() - self.scroll_offset > self.scroll_size
+        } else {
+            false
+        }
     }
 }

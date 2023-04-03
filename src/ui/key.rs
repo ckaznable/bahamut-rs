@@ -1,4 +1,4 @@
-use std::sync::mpsc::Sender;
+use std::{sync::mpsc::Sender, rc::Rc, cell::RefCell};
 
 use crossterm::event::{KeyEvent, KeyCode, Event, KeyModifiers};
 use tui_input::backend::crossterm::EventHandler;
@@ -129,31 +129,37 @@ fn handle_board_key(app: &mut AppState, event: KeyEvent, tx: Sender<DataRequestM
 }
 
 fn handle_post_key(app: &mut AppState, event: KeyEvent, tx: Sender<DataRequestMsg>) -> KeyBindEvent {
+    let app = Rc::new(RefCell::new(app));
+    let next = |app: &Rc<RefCell<&mut AppState>>| {
+        let mut app = app.borrow_mut();
+        if app.post.next().is_none() && app.post.has_next() {
+            app.loading = true;
+            tx.send(DataRequestMsg::PostPage(app.post.url.to_owned(), app.post.page + 1)).map_or((), |_|());
+        }
+    };
+
+    let app = Rc::clone(&app);
     match event.code {
-        KeyCode::Char('j') | KeyCode::Down | KeyCode::PageDown => {
-            if app.post.next().is_none() && app.post.has_next() {
-                app.loading = true;
-                tx.send(DataRequestMsg::PostPage(app.post.url.to_owned(), app.post.page + 1)).map_or((), |_|());
-            }
-        },
-        KeyCode::Char('k') | KeyCode::Up | KeyCode::PageUp => app.post.previous(),
+        KeyCode::PageDown => next(&app),
+        KeyCode::PageUp => app.borrow_mut().post.previous(),
+        KeyCode::Home => app.borrow_mut().post.first(),
+        KeyCode::Char('j') | KeyCode::Down => app.borrow_mut().post.scroll_down(),
+        KeyCode::Char('k') | KeyCode::Up => app.borrow_mut().post.scroll_up(),
         _ => ()
     };
 
-    match event {
-        KeyEvent {
-            code,
-            modifiers: KeyModifiers::CONTROL,
-            kind: _,
-            state: _,
-        } => match code {
-            KeyCode::Char('f') => {
-                app.post.next();
-            },
-            KeyCode::Char('b') => app.post.previous(),
+    // with control
+    if let KeyEvent {
+        code,
+        modifiers: KeyModifiers::CONTROL,
+        kind: _,
+        state: _
+    } = event {
+        match code {
+            KeyCode::Char('f') => next(&app),
+            KeyCode::Char('b') => app.borrow_mut().post.previous(),
             _ => ()
         }
-        _ => ()
     };
 
     KeyBindEvent::None

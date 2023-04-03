@@ -14,8 +14,6 @@ impl StatefulWidget for PostPageUI {
     type State = PostPageState;
 
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
-        let current = state.current().unwrap();
-
         let layout = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
@@ -23,6 +21,8 @@ impl StatefulWidget for PostPageUI {
                 Constraint::Min(0),
             ])
             .split(area);
+
+        state.scroll_size(layout[1].height as usize);
 
         let top = Layout::default()
             .direction(Direction::Horizontal)
@@ -33,6 +33,7 @@ impl StatefulWidget for PostPageUI {
             .split(layout[0]);
 
         // user
+        let current = state.current().unwrap();
         Paragraph::new(vec![
             Spans::from(current.user.id.as_ref()),
             Spans::from(current.user.name.as_ref()),
@@ -54,6 +55,7 @@ impl StatefulWidget for PostPageUI {
         // desc
         let desc: Vec<Spans> = current.desc
             .iter()
+            .skip(state.scroll_offset)
             .map(|s| Spans::from(s.to_owned()))
             .collect();
         Paragraph::new(desc)
