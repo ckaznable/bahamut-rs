@@ -121,7 +121,7 @@ impl Board {
             .select(&selector)
             .into_iter()
             .filter_map(|root| {
-                BoardPost::try_from(root).map_or(None, |x| Some(x))
+                BoardPost::try_from(root).ok()
             })
             .collect::<Vec<BoardPost>>()
     }
@@ -135,7 +135,7 @@ impl Board {
             .text()
             .collect::<String>();
 
-        let name = title.split(" ").next().map(String::from);
+        let name = title.split(' ').next().map(String::from);
         name
     }
 
@@ -180,12 +180,6 @@ impl TryFrom<WebSite> for Board {
             category: Board::try_category_map_from_html(&document).ok_or("category invalid")?,
             document
         })
-    }
-}
-
-impl Into<Html> for Board {
-    fn into(self) -> Html {
-        self.document
     }
 }
 

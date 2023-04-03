@@ -85,7 +85,7 @@ impl User {
             .last()?
             .to_string();
 
-        lv.trim().parse::<u8>().map_or(Some(0u8), |x|Some(x))
+        lv.trim().parse::<u8>().map_or(Some(0u8), Some)
     }
 
     fn try_id_from_html(document: &ElementRef) -> Option<String> {
@@ -119,7 +119,7 @@ impl User {
             .next()?
             .value()
             .attr("src")?
-            .split("/")
+            .split('/')
             .last()?;
 
         let race = match race {
@@ -140,7 +140,7 @@ impl User {
             .next()?
             .value()
             .attr("src")?
-            .split("/")
+            .split('/')
             .last()?;
 
         let crarrer = match crarrer {
@@ -164,11 +164,11 @@ impl TryFrom<&ElementRef<'_>> for User {
 
     fn try_from(document: &ElementRef) -> Result<Self, Self::Error> {
         let user = User {
-            lv: User::try_level_from_html(&document).ok_or("user lv invalid")?,
-            id: User::try_id_from_html(&document).ok_or("user id invalid")?,
-            name: User::try_name_from_html(&document).ok_or("user name invalid")?,
-            race: User::try_race_from_html(&document).map_or(UserRace::Unknown, |x|x),
-            carrer: User::try_crarrer_from_html(&document).map_or(UserCareer::Unknown, |x|x),
+            lv: User::try_level_from_html(document).ok_or("user lv invalid")?,
+            id: User::try_id_from_html(document).ok_or("user id invalid")?,
+            name: User::try_name_from_html(document).ok_or("user name invalid")?,
+            race: User::try_race_from_html(document).map_or(UserRace::Unknown, |x|x),
+            carrer: User::try_crarrer_from_html(document).map_or(UserCareer::Unknown, |x|x),
         };
 
         Ok(user)

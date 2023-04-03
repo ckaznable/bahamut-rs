@@ -22,8 +22,8 @@ pub struct PostPageUrlParameter {
 impl TryFrom<String> for PostPageUrlParameter {
     type Error = &'static str;
     fn try_from(value: String) -> Result<Self, Self::Error> {
-        let url = Url::parse(value.as_str()).or_else(|_|Err("invalid url string"))?;
-        PostPageUrlParameter::try_from(url).or_else(|_|Err(""))
+        let url = Url::parse(value.as_str()).map_err(|_| "invalid url string").unwrap();
+        PostPageUrlParameter::try_from(url).map_err(|_| "")
     }
 }
 
@@ -178,7 +178,7 @@ impl Post {
                 Some(
                     PostContent {
                         desc: PostContent::try_desc_from_html(&dom)?,
-                        user: User::try_from(&dom).map_or(None, |x|Some(x))?,
+                        user: User::try_from(&dom).ok()?,
                         floor: PostContent::try_floor_from_html(&dom)?,
                         date: PostContent::try_date_from_html(&dom)?,
                     }

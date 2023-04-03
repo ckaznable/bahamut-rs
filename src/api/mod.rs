@@ -9,7 +9,7 @@ pub mod board;
 pub mod user;
 pub mod search;
 
-pub static DN: &'static str = "https://forum.gamer.com.tw/";
+pub static DN: &str = "https://forum.gamer.com.tw/";
 
 async fn get_document(url: &Url) -> Html {
     let html = reqwest::get(url.as_str())
@@ -62,22 +62,17 @@ pub trait CachedPage<T> where T: Sized + TryFrom<WebSite> + Clone {
 
         let cache = self.cache();
         if !ignore_cache && cache.contains_key(&page) {
-            return match cache.get(&page).unwrap() {
-                None => None,
-                Some(v) => Some(v.clone())
-            };
+            return cache.get(&page).unwrap().as_ref().cloned();
         }
 
         let url = self.url(&page);
         let document = self.get_page_html(page);
 
-        let result = if let Ok(board) = T::try_from(WebSite { url, document }) {
+        if let Ok(board) = T::try_from(WebSite { url, document }) {
             Some(board)
         } else {
             None
-        };
-
-        result
+        }
     }
 
     fn get_and_cache(&mut self, page: u16, ignore_cache: bool) -> Option<T> {

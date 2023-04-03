@@ -25,8 +25,8 @@ impl BoardSearch {
             .select(&selector)
             .into_iter()
             .filter_map(|dom| {
-                let td = dom.select(&td_selector).skip(2).next()?;
-                SearchResult::try_from(td).map_or(None, |x|Some(x))
+                let td = dom.select(&td_selector).nth(2)?;
+                SearchResult::try_from(td).ok()
             })
             .collect::<Vec<SearchResult>>()
     }
@@ -47,7 +47,7 @@ impl SearchResult {
             .next()?
             .value()
             .attr("href")?
-            .split("=")
+            .split('=')
             .last()?
             .to_string();
 
