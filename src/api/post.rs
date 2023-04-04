@@ -1,10 +1,12 @@
 use std::collections::HashMap;
 
+use futures::executor::block_on;
 use scraper::{Selector, ElementRef};
-use serde::Serialize;
+use serde::{Serialize, Deserialize};
+use serde_json::Value;
 use url::Url;
 
-use super::{user::User, WebSite, CachedPage, DN};
+use super::{user::User, WebSite, CachedPage, DN, get_json};
 
 pub trait CommentReadable {
     fn comment(&self) -> Vec<PostComment>;
@@ -177,6 +179,7 @@ impl Post {
             .filter_map(|dom| {
                 Some(
                     PostContent {
+                        id: PostContent::try_id_from_html(&dom)?,
                         desc: PostContent::try_desc_from_html(&dom)?,
                         user: User::try_from(&dom).ok()?,
                         floor: PostContent::try_floor_from_html(&dom)?,
@@ -241,15 +244,51 @@ impl TryFrom<WebSite> for Post {
     }
 }
 
-#[derive(Clone, Serialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct PostComment {
-    pub name: String,
+    pub bsn: String,
+    pub sn: String,
+    pub userid: String,
     pub comment: String,
-    pub id: String,
+    pub gp: String,
+    pub bp: String,
+    pub wtime: String,
+    pub mtime: String,
+    pub state: String,
+    pub floor: u16,
+    pub content: String,
+    pub time: String,
+    pub nick: String,
+
+    #[serde(flatten)]
+    other: HashMap<String, serde_json::Value>,
+}
+
+impl PostComment {
+    pub fn get_comment(id: String, c_id: String) -> Result<Vec<PostComment>, reqwest::Error> {
+        let url = format!("{}ajax/moreCommend.php?bsn={}&snB={}", DN, id, c_id);
+        let url = Url::parse(url.as_ref()).unwrap();
+        let map = block_on(get_json::<HashMap<String, Value>>(&url))?;
+
+        let mut list = map.iter()
+            .filter_map(|(k, v)| {
+                if k == "next_snC" {
+                    None
+                } else {
+                    let comment: PostComment = serde_json::from_value(v.clone()).unwrap();
+                    Some(comment)
+                }
+            })
+            .collect::<Vec<PostComment>>();
+
+        list.sort_by_key(|v|v.floor);
+        Ok(list)
+    }
 }
 
 #[derive(Clone, Serialize)]
 pub struct PostContent {
+    pub id: String,
     pub desc: PostDescription,
     pub user: User,
     pub floor: u16,
@@ -278,14 +317,24 @@ impl PostContent {
         Some(floor)
     }
 
+    fn try_id_from_html(document: &ElementRef) -> Option<String> {
+        let selector = Selector::parse(".c-article").unwrap();
+        let id = document.select(&selector)
+            .next()?
+            .value()
+            .id()?;
+
+        Some(id.replace("cf", ""))
+    }
+
     fn try_desc_from_html(document: &ElementRef) -> Option<PostDescription> {
         let selector = Selector::parse(".c-article__content").unwrap();
-        let text_selector = Selector::parse("div").unwrap();
+        let desc_selector = Selector::parse("div").unwrap();
 
         let desc = document
             .select(&selector)
             .filter_map(|el| {
-                let content = el.select(&text_selector);
+                let content = el.select(&desc_selector);
                 let is_pure_text = content.clone().next().is_none();
 
                 if is_pure_text {

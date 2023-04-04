@@ -2,6 +2,7 @@ use std::{collections::HashMap};
 
 use futures::executor::block_on;
 use scraper::Html;
+use serde::de::DeserializeOwned;
 use url::Url;
 
 pub mod post;
@@ -20,6 +21,14 @@ async fn get_document(url: &Url) -> Html {
         .unwrap();
 
     Html::parse_document(html.as_ref())
+}
+
+async fn get_json<T: DeserializeOwned>(url: &Url) -> Result<T, reqwest::Error> {
+    reqwest::get(url.as_str())
+        .await
+        .unwrap()
+        .json::<T>()
+        .await
 }
 
 pub struct WebSite {

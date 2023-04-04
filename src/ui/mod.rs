@@ -4,26 +4,30 @@ pub mod search;
 pub mod board;
 pub mod loading;
 pub mod post;
+pub mod comment;
 
 use ratatui::{backend::Backend, Frame, layout::{Constraint, Direction, Layout, Rect}};
 
-use self::{state::{AppState, InputMode}, search::SearchPageUI, loading::Loading, board::BoardPageUI, post::PostPageUI};
+use self::{state::{AppState, InputMode, Page}, search::SearchPageUI, loading::Loading, board::BoardPageUI, post::PostPageUI, comment::CommentPageUI};
 
 pub fn ui<B: Backend>(f: &mut Frame<B>, app: &mut AppState) {
     let size = f.size();
 
     match app.page {
-        state::Page::Search => {
+        Page::Search => {
             f.render_stateful_widget(SearchPageUI::default(), size, &mut app.search);
             if app.search.mode == InputMode::Edit {
                 f.set_cursor(app.search.cursor.0, app.search.cursor.1);
             }
         },
-        state::Page::Board => {
+        Page::Board => {
             f.render_stateful_widget(BoardPageUI, size, &mut app.board);
         },
-        state::Page::Post => {
+        Page::Post => {
             f.render_stateful_widget(PostPageUI, size, &mut app.post);
+        },
+        Page::Comment => {
+            f.render_stateful_widget(CommentPageUI, size, &mut app.comment);
         },
     };
 

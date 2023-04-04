@@ -1,8 +1,8 @@
 use std::{error::Error, sync::mpsc::{channel, Sender, Receiver}, thread::{JoinHandle, self}, io, time::Duration, collections::HashMap};
 
-use bahamut::api::{search::BoardSearch, board::BoardPage, CachedPage, post::{PostPage, Post, PostPageUrlParameter}};
+use bahamut::api::{search::BoardSearch, board::BoardPage, CachedPage, post::{PostPage, Post, PostPageUrlParameter, PostComment}};
 use channel::{FetchDataMsg, DataRequestMsg, PageData};
-use crossterm::{terminal::{enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode}, execute, event::{EnableMouseCapture, DisableMouseCapture, Event, self}};
+use crossterm::{terminal::{enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode}, execute, event::{DisableMouseCapture, Event, self}};
 use ratatui::{backend::{CrosstermBackend, Backend}, Terminal};
 use tokio::runtime::Builder;
 use ui::{state::{AppState, ListStateInit, Page}, key::handle_key, ui};
@@ -18,7 +18,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     // setup terminal
     enable_raw_mode()?;
     let mut stdout = io::stdout();
-    execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
+    execute!(stdout, EnterAlternateScreen)?;
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
@@ -95,6 +95,10 @@ fn run_app<B: Backend>(
                         app.post.page(v.page);
                         app.post.next();
                     }
+                },
+                FetchDataMsg::CommentPage(v) => {
+                    app.page = Page::Comment;
+                    app.comment.items(v);
                 }
             }
         }
@@ -166,6 +170,16 @@ fn run_fetcher(tx: Sender<FetchDataMsg>, rx: Receiver<DataRequestMsg>) -> JoinHa
                             let page_data = PageData { page, items, max: post_page.max };
                             post_cache.insert(cache_key, post_page);
                             tx.send(FetchDataMsg::PostPage(page_data)).map_or((), |_|())
+                        }
+
+                        // comment
+                        DataRequestMsg::CommentPage(id, c_id) => {
+                            let res = match PostComment::get_comment(id.to_owned(), c_id.to_owned()) {
+                                Ok(v) => v,
+                                Err(_) => vec![]
+                            };
+
+                            tx.send(FetchDataMsg::CommentPage(res)).map_or((), |_|());
                         }
                     };
                 };

@@ -32,6 +32,7 @@ pub fn handle_key(app: &mut AppState, event: KeyEvent, tx: Sender<DataRequestMsg
         Page::Search => handle_search_key(app, event, tx),
         Page::Board => handle_board_key(app, event, tx),
         Page::Post => handle_post_key(app, event, tx),
+        Page::Comment => handle_comment_key(app, event, tx),
     }
 }
 
@@ -47,9 +48,10 @@ fn handle_general_key(app: &mut AppState, event: KeyEvent, _: Sender<DataRequest
                     Page::Search => return KeyBindEvent::Quit,
                     Page::Board => app.page = Page::Search,
                     Page::Post => app.page = Page::Board,
+                    Page::Comment => app.page = Page::Post,
                 }
             }
-        },
+        }
         _ => ()
     };
 
@@ -145,6 +147,14 @@ fn handle_post_key(app: &mut AppState, event: KeyEvent, tx: Sender<DataRequestMs
         KeyCode::Home => app.borrow_mut().post.first(),
         KeyCode::Char('j') | KeyCode::Down => app.borrow_mut().post.scroll_down(),
         KeyCode::Char('k') | KeyCode::Up => app.borrow_mut().post.scroll_up(),
+        KeyCode::Char('o') => {
+            let mut _app = app.borrow_mut();
+            _app.loading = true;
+            _app.comment.init();
+            if let Some(content) = _app.post.current() {
+                tx.send(DataRequestMsg::CommentPage(_app.board.id.to_owned(), content.id.to_owned())).map_or((), |_|());
+            }
+        }
         _ => ()
     };
 
@@ -160,6 +170,16 @@ fn handle_post_key(app: &mut AppState, event: KeyEvent, tx: Sender<DataRequestMs
             KeyCode::Char('b') => app.borrow_mut().post.previous(),
             _ => ()
         }
+    };
+
+    KeyBindEvent::None
+}
+
+fn handle_comment_key(app: &mut AppState, event: KeyEvent, _: Sender<DataRequestMsg>) -> KeyBindEvent {
+    match event.code {
+        KeyCode::Char('j') | KeyCode::Down => app.comment.next(),
+        KeyCode::Char('k') | KeyCode::Up => app.comment.previous(),
+        _ => ()
     };
 
     KeyBindEvent::None

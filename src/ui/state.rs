@@ -1,4 +1,4 @@
-use bahamut::api::{search::SearchResult, board::BoardPost, post::{Post, PostContent}};
+use bahamut::api::{search::SearchResult, board::BoardPost, post::{Post, PostContent, PostComment}};
 use ratatui::widgets::ListState;
 use tui_input::Input;
 
@@ -19,6 +19,7 @@ pub enum Page {
     Search,
     Board,
     Post,
+    Comment,
 }
 
 pub trait CursorMoveable {
@@ -71,6 +72,7 @@ pub struct AppState {
     pub search: SearchPageState,
     pub board: BoardPageState,
     pub post: PostPageState,
+    pub comment: PostCommentState,
     pub loading: bool,
 }
 
@@ -87,6 +89,7 @@ impl Default for AppState {
             search: SearchPageState::default(),
             board: BoardPageState::default(),
             post: PostPageState::default(),
+            comment: PostCommentState::default(),
             loading: false,
         }
     }
@@ -301,5 +304,42 @@ impl PostPageState {
         } else {
             false
         }
+    }
+}
+
+#[derive(Default)]
+pub struct PostCommentState {
+    pub offset: usize,
+    pub items: Vec<PostComment>,
+    pub scroll_size: usize,
+}
+
+impl PostCommentState {
+    pub fn items(&mut self, items: Vec<PostComment>) {
+        self.items = items;
+    }
+
+    pub fn scroll_size(&mut self, size: usize) {
+        self.scroll_size = size;
+    }
+
+    pub fn next(&mut self) {
+        if !self.items.is_empty() && self.scrollable() {
+            self.offset += 1;
+        }
+    }
+
+    pub fn previous(&mut self) {
+        if !self.offset > 0 {
+            self.offset -= 1;
+        }
+    }
+
+    pub fn scrollable(&self) -> bool {
+        self.items.len() - self.offset > self.scroll_size
+    }
+
+    pub fn init(&mut self) {
+        self.offset = 0;
     }
 }
