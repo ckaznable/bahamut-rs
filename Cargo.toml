@@ -2,8 +2,14 @@
 name = "bahamut"
 version = "0.1.0"
 edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+authors = ["CK Aznable"]
+description = "gamer.com.tw api and tui client"
+homepage = "https://github.com/ckaznable/bahamut-rs"
+repository = "https://github.com/ckaznable/bahamut-rs"
+keywords = ["tui", "api"]
+exclude = [".github/"]
+license = "MIT"
+readme = "README.md"
 
 [dependencies]
 futures = "0.3.27"
