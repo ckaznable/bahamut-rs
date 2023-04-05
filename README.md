@@ -1,5 +1,7 @@
 # bahamut-rs
 
+![demo](./doc/sample.gif)
+
 巴哈姆特非官方API的Rust實作
 
 ## API
