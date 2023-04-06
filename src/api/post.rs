@@ -74,10 +74,11 @@ impl PostPage {
     }
 
     pub fn init(&mut self) {
-        let document = self.get_page_html(1);
-        let root = document.root_element();
-        let max = PostPage::try_page_from_html(&root).map_or(0, |v|v);
-        self.max = max;
+        if let Some(document) = self.get_page_html(1) {
+            let root = document.root_element();
+            let max = PostPage::try_page_from_html(&root).map_or(0, |v|v);
+            self.max = max;
+        }
     }
 
     pub fn floor(&mut self, floor: u16) {
@@ -265,7 +266,7 @@ pub struct PostComment {
 }
 
 impl PostComment {
-    pub fn get_comment(id: String, c_id: String) -> Result<Vec<PostComment>, reqwest::Error> {
+    pub fn get_comment(id: String, c_id: String) -> Result<Vec<PostComment>, Box<dyn std::error::Error>> {
         let url = format!("{}ajax/moreCommend.php?bsn={}&snB={}", DN, id, c_id);
         let url = Url::parse(url.as_ref()).unwrap();
         let map = block_on(get_json::<HashMap<String, Value>>(&url))?;

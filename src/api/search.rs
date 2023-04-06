@@ -17,17 +17,20 @@ impl UrlWithId<&str> for BoardSearch {
 impl BoardSearch {
     pub fn get_search_result(query: &str) -> Vec<SearchResult> {
         let url = BoardSearch::url(query);
-        let document = block_on(get_document(&url));
         let selector = Selector::parse(".BH-table tr").unwrap();
         let td_selector = Selector::parse("td").unwrap();
 
-        document
-            .select(&selector)
-            .filter_map(|dom| {
-                let td = dom.select(&td_selector).nth(2)?;
-                SearchResult::try_from(td).ok()
-            })
-            .collect::<Vec<SearchResult>>()
+        if let Ok(document) = block_on(get_document(&url)) {
+            document
+                .select(&selector)
+                .filter_map(|dom| {
+                    let td = dom.select(&td_selector).nth(2)?;
+                    SearchResult::try_from(td).ok()
+                })
+                .collect::<Vec<SearchResult>>()
+        } else {
+            vec![]
+        }
     }
 }
 

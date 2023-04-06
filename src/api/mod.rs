@@ -1,8 +1,9 @@
-use std::{collections::HashMap};
+use std::{collections::HashMap, time::Duration};
 
 use futures::executor::block_on;
 use scraper::Html;
 use serde::de::DeserializeOwned;
+use tokio::time::timeout;
 use url::Url;
 
 pub mod post;
@@ -12,23 +13,32 @@ pub mod search;
 
 pub static DN: &str = "https://forum.gamer.com.tw/";
 
-async fn get_document(url: &Url) -> Html {
-    let html = reqwest::get(url.as_str())
-        .await
-        .unwrap()
-        .text()
-        .await
-        .unwrap();
+static REQ_TIMEOUT: u8 = 5;
 
-    Html::parse_document(html.as_ref())
+async fn get_document(url: &Url) -> Result<Html, Box<dyn std::error::Error>> {
+    let html = timeout(Duration::from_secs(REQ_TIMEOUT as u64), async {
+        reqwest::get(url.as_str())
+            .await
+            .unwrap()
+            .text()
+            .await
+            .unwrap()
+    }).await?;
+
+    Ok(Html::parse_document(html.as_ref()))
 }
 
-async fn get_json<T: DeserializeOwned>(url: &Url) -> Result<T, reqwest::Error> {
-    reqwest::get(url.as_str())
-        .await
-        .unwrap()
-        .json::<T>()
-        .await
+async fn get_json<T: DeserializeOwned>(url: &Url) -> Result<T, Box<dyn std::error::Error>> {
+    let res = timeout(Duration::from_secs(REQ_TIMEOUT as u64), async {
+        reqwest::get(url.as_str())
+            .await
+            .unwrap()
+            .json::<T>()
+            .await
+            .unwrap()
+    }).await?;
+
+    Ok(res)
 }
 
 pub struct WebSite {
@@ -58,9 +68,9 @@ pub trait CachedPage<T> where T: Sized + TryFrom<WebSite> + Clone {
         max != 0 && self.page() > max
     }
 
-    fn get_page_html(&self, page: u16) -> Html {
+    fn get_page_html(&self, page: u16) -> Option<Html> {
         let url = self.url(&page);
-        block_on(get_document(&url))
+        block_on(get_document(&url)).ok()
     }
 
     fn get(&self, page: u16, ignore_cache: bool) -> Option<T> {
@@ -74,14 +84,14 @@ pub trait CachedPage<T> where T: Sized + TryFrom<WebSite> + Clone {
             return cache.get(&page).unwrap().as_ref().cloned();
         }
 
-        let url = self.url(&page);
-        let document = self.get_page_html(page);
-
-        if let Ok(board) = T::try_from(WebSite { url, document }) {
-            Some(board)
-        } else {
-            None
+        if let Some(document) = self.get_page_html(page) {
+            let url = self.url(&page);
+            if let Ok(board) = T::try_from(WebSite { url, document }) {
+                return Some(board);
+            }
         }
+
+        None
     }
 
     fn get_and_cache(&mut self, page: u16, ignore_cache: bool) -> Option<T> {

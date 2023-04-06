@@ -39,10 +39,11 @@ impl BoardPage {
     }
 
     pub fn init(&mut self) {
-        let document = self.get_page_html(1);
-        let root = document.root_element();
-        let max = BoardPage::try_page_from_html(&root).map_or(0, |v|v);
-        self.max = max;
+        if let Some(document) = self.get_page_html(1) {
+            let root = document.root_element();
+            let max = BoardPage::try_page_from_html(&root).map_or(0, |v|v);
+            self.max = max;
+        }
     }
 
     fn try_page_from_html(document: &ElementRef) -> Option<u16> {
