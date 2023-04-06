@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use futures::executor::block_on;
-use scraper::{Selector, ElementRef};
+use scraper::{Selector, ElementRef, Html};
 use serde::{Serialize, Deserialize};
 use serde_json::Value;
 use url::Url;
@@ -59,6 +59,7 @@ pub struct PostPage {
     pub floor: u16,
 
     cache: HashMap<u16, Option<Post>>,
+    first_page_html: Option<Html>,
 }
 
 impl PostPage {
@@ -70,6 +71,7 @@ impl PostPage {
             max: 0,
             floor: 0,
             cache: HashMap::new(),
+            first_page_html: None,
         }
     }
 
@@ -78,6 +80,7 @@ impl PostPage {
             let root = document.root_element();
             let max = PostPage::try_page_from_html(&root).map_or(0, |v|v);
             self.max = max;
+            self.first_page_html = Some(document);
         }
     }
 
@@ -107,6 +110,14 @@ impl CachedPage<Post> for PostPage {
 
     fn insert_cache(&mut self, page: &u16, obj: Option<Post>) {
         self.cache.insert(*page, obj);
+    }
+
+    fn cached_page_html(&self, page: u16) -> Option<Html> {
+        if page == 1 {
+            self.first_page_html.clone()
+        } else {
+            None
+        }
     }
 
     fn url(&self, page: &u16) -> Url {

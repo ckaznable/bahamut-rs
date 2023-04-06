@@ -17,6 +17,7 @@ pub struct BoardPage {
     pub max: u16,
 
     cache: HashMap<u16, Option<Board>>,
+    first_page_cache: Option<Html>
 }
 
 impl BoardPage {
@@ -26,6 +27,7 @@ impl BoardPage {
             page: 1,
             max: 0,
             cache: HashMap::new(),
+            first_page_cache: None,
         }
     }
 
@@ -35,6 +37,7 @@ impl BoardPage {
             page,
             max: 0,
             cache: HashMap::new(),
+            first_page_cache: None
         }
     }
 
@@ -43,6 +46,7 @@ impl BoardPage {
             let root = document.root_element();
             let max = BoardPage::try_page_from_html(&root).map_or(0, |v|v);
             self.max = max;
+            self.first_page_cache = Some(document);
         }
     }
 
@@ -61,6 +65,14 @@ impl CachedPage<Board> for BoardPage {
 
     fn insert_cache(&mut self, page: &u16, obj: Option<Board>) {
         self.cache.insert(*page, obj);
+    }
+
+    fn cached_page_html(&self, page: u16) -> Option<Html> {
+        if page == 1 {
+            self.first_page_cache.clone()
+        } else {
+            None
+        }
     }
 
     fn url(&self, page: &u16) -> Url {

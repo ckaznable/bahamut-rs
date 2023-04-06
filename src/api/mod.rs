@@ -59,6 +59,10 @@ pub trait CachedPage<T> where T: Sized + TryFrom<WebSite> + Clone {
     fn decrease_page(&mut self);
     fn max(&self) -> u16;
 
+    fn cached_page_html(&self, _: u16) -> Option<Html> {
+        None
+    }
+
     fn is_over_min(&self) -> bool {
         self.page() == 0
     }
@@ -84,7 +88,13 @@ pub trait CachedPage<T> where T: Sized + TryFrom<WebSite> + Clone {
             return cache.get(&page).unwrap().as_ref().cloned();
         }
 
-        if let Some(document) = self.get_page_html(page) {
+        let document = if let Some(v) = self.cached_page_html(page) {
+            Some(v)
+        } else {
+            self.get_page_html(page)
+        };
+
+        if let Some(document) = document {
             let url = self.url(&page);
             if let Ok(board) = T::try_from(WebSite { url, document }) {
                 return Some(board);
