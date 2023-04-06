@@ -3,16 +3,11 @@ use ratatui::widgets::ListState;
 use tui_input::Input;
 
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Default)]
 pub enum InputMode {
+    #[default]
     Normal,
     Edit,
-}
-
-impl Default for InputMode {
-    fn default() -> Self {
-        InputMode::Normal
-    }
 }
 
 pub enum Page {

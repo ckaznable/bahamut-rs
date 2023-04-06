@@ -23,7 +23,6 @@ impl BoardSearch {
 
         document
             .select(&selector)
-            .into_iter()
             .filter_map(|dom| {
                 let td = dom.select(&td_selector).nth(2)?;
                 SearchResult::try_from(td).ok()

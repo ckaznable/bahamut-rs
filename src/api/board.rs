@@ -119,7 +119,6 @@ impl Board {
         let selector = Selector::parse(".b-list__row").expect("parse selector error");
         self.document
             .select(&selector)
-            .into_iter()
             .filter_map(|root| {
                 BoardPost::try_from(root).ok()
             })
@@ -154,7 +153,6 @@ impl Board {
         let selector = Selector::parse(".b-tags__item a").expect("parse selector error");
         document
             .select(&selector)
-            .into_iter()
             .for_each(|elm| {
                 let href = elm.value().attr("href").unwrap();
                 let url = Url::parse(href).unwrap();
