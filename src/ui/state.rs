@@ -295,7 +295,10 @@ impl PostPageState {
 
     fn scrollable(&self) -> bool {
         if let Some(desc) = self.current() {
-            desc.desc.len() - self.scroll_offset > self.scroll_size
+            let desc = &desc.desc;
+
+            !desc.is_empty() && desc.len() >= self.scroll_offset &&
+            desc.len() - self.scroll_offset > self.scroll_size
         } else {
             false
         }
