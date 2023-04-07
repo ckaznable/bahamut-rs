@@ -1,10 +1,12 @@
+extern crate lazy_static;
+
 use std::{error::Error, sync::mpsc::{channel, Sender, Receiver}, thread::{JoinHandle, self}, io, time::Duration, collections::HashMap, cell::RefCell};
 
 use bahamut::api::{search::BoardSearch, board::BoardPage, CachedPage, post::{PostPage, Post, PostPageUrlParameter, PostComment}};
 use channel::{FetchDataMsg, DataRequestMsg, PageData};
 use crossterm::{terminal::{enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode}, execute, event::{DisableMouseCapture, Event, self}};
 use ratatui::{backend::{CrosstermBackend, Backend}, Terminal};
-use tokio::runtime::Runtime;
+use tokio::runtime::Builder;
 use ui::{state::{AppState, ListStateInit, Page}, key::handle_key, ui};
 
 mod ui;
@@ -110,7 +112,7 @@ fn run_fetcher(tx: Sender<FetchDataMsg>, rx: Receiver<DataRequestMsg>) -> JoinHa
         let mut board_cache: HashMap<String, RefCell<BoardPage>> = HashMap::new();
         let mut post_cache: HashMap<String, RefCell<PostPage>> = HashMap::new();
 
-        let rt = Runtime::new().unwrap();
+        let rt = Builder::new_multi_thread().enable_all().build().unwrap();
         rt.block_on(async {
             loop {
                 if let Ok(msg) = rx.recv() {

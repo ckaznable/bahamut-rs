@@ -1,9 +1,10 @@
+use lazy_static::lazy_static;
+
 use std::{collections::HashMap, time::Duration};
 
 use futures::executor::block_on;
 use scraper::Html;
 use serde::de::DeserializeOwned;
-use tokio::time::timeout;
 use url::Url;
 
 pub mod post;
@@ -13,30 +14,29 @@ pub mod search;
 
 pub static DN: &str = "https://forum.gamer.com.tw/";
 
-static REQ_TIMEOUT: u8 = 5;
+lazy_static! {
+    static ref HTTP_CLIENT: reqwest::Client = reqwest::ClientBuilder::new()
+        .timeout(Duration::from_secs(5))
+        .build()
+        .unwrap();
+}
 
 async fn get_document(url: &Url) -> Result<Html, Box<dyn std::error::Error>> {
-    let html = timeout(Duration::from_secs(REQ_TIMEOUT as u64), async {
-        reqwest::get(url.as_str())
-            .await
-            .unwrap()
-            .text()
-            .await
-            .unwrap()
-    }).await?;
+    let html = HTTP_CLIENT.get(url.as_str())
+        .send()
+        .await?
+        .text()
+        .await?;
 
     Ok(Html::parse_document(html.as_ref()))
 }
 
 async fn get_json<T: DeserializeOwned>(url: &Url) -> Result<T, Box<dyn std::error::Error>> {
-    let res = timeout(Duration::from_secs(REQ_TIMEOUT as u64), async {
-        reqwest::get(url.as_str())
-            .await
-            .unwrap()
-            .json::<T>()
-            .await
-            .unwrap()
-    }).await?;
+    let res = HTTP_CLIENT.get(url.as_str())
+        .send()
+        .await?
+        .json::<T>()
+        .await?;
 
     Ok(res)
 }
