@@ -345,22 +345,20 @@ impl PostContent {
 
         let desc = document
             .select(&selector)
-            .filter_map(|el| {
+            .flat_map(|el| {
                 let content = el.select(&desc_selector);
                 let is_pure_text = content.clone().next().is_none();
 
                 if is_pure_text {
-                    return Some(
-                        el.text().map(|s|s.to_string()).collect()
-                    );
+                    return el.text().map(|s|s.to_string()).collect::<PostDescription>();
                 }
 
-                let text = content.filter_map(|el| {
+                content.flat_map(|el| {
                     // youtube
                     let yt_selector = Selector::parse(".video-youtube iframe").unwrap();
                     let yt = el.select(&yt_selector).next();
                     if yt.is_some() {
-                        return Some(vec![yt.unwrap().value().attr("data-src")?.to_string()]);
+                        return vec![yt.unwrap().value().attr("data-src").unwrap().to_string()];
                     }
 
                     // image
@@ -368,22 +366,16 @@ impl PostContent {
                     let img_dom = el.select(&img_selector);
                     let img = img_dom.clone().next();
                     if img.is_some() {
-                        return Some(
-                            img_dom.map(|_img| {
+                        return img_dom.map(|_img| {
                                 _img.value().attr("data-src").unwrap().to_string()
                             })
                             .collect::<Vec<String>>()
-                        )
                     }
 
-                    Some(vec![el.text().collect::<String>()])
+                    vec![el.text().collect::<String>()]
                 })
-                .flatten()
-                .collect::<PostDescription>();
-
-                Some(text)
+                .collect::<PostDescription>()
             })
-            .flatten()
             .collect::<PostDescription>();
 
         Some(desc)
