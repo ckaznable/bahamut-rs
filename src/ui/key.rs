@@ -97,18 +97,18 @@ fn handle_board_key(app: &mut AppState, event: KeyEvent, tx: Sender<DataRequestM
         KeyCode::Char('j') | KeyCode::Down => app.board.next(),
         KeyCode::Char('k') | KeyCode::Up => app.board.previous(),
         KeyCode::Char('h') | KeyCode::Left => {
-            app.loading = true;
             if app.board.page <= 1 {
                 app.board.page(1)
             } else {
+                app.loading = true;
                 tx.send(DataRequestMsg::BoardPage(app.board.id.to_owned(), app.board.page - 1)).map_or((), |_|())
             }
         }
         KeyCode::Char('l') | KeyCode::Right => {
-            app.loading = true;
             if app.board.page >= app.board.last_page {
                 app.board.page(app.board.last_page)
             } else {
+                app.loading = true;
                 tx.send(DataRequestMsg::BoardPage(app.board.id.to_owned(), app.board.page + 1)).map_or(() , |_|())
             }
         }
