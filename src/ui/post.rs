@@ -1,3 +1,4 @@
+use bahamut::api::post::PostContent;
 use ratatui::{
     widgets::{StatefulWidget, Block, Paragraph, Widget, Borders, Wrap},
     layout::{Layout, Constraint, Rect, Direction},
@@ -33,7 +34,8 @@ impl StatefulWidget for PostPageUI {
             .split(layout[0]);
 
         // user
-        let current = state.current().unwrap();
+        let current = PostContent::default();
+        let current = state.current().map_or(&current, |x|x);
         Paragraph::new(vec![
             Spans::from(current.user.id.as_ref()),
             Spans::from(current.user.name.as_ref()),

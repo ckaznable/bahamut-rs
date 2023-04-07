@@ -298,7 +298,7 @@ impl PostComment {
     }
 }
 
-#[derive(Clone, Serialize)]
+#[derive(Clone, Serialize, Default)]
 pub struct PostContent {
     pub id: String,
     pub desc: PostDescription,
