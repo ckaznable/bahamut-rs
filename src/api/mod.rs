@@ -1,4 +1,6 @@
-use std::{collections::HashMap};
+use lazy_static::lazy_static;
+
+use std::{collections::HashMap, time::Duration};
 
 use futures::executor::block_on;
 use scraper::Html;
@@ -12,23 +14,31 @@ pub mod search;
 
 pub static DN: &str = "https://forum.gamer.com.tw/";
 
-async fn get_document(url: &Url) -> Html {
-    let html = reqwest::get(url.as_str())
-        .await
-        .unwrap()
-        .text()
-        .await
+lazy_static! {
+    static ref HTTP_CLIENT: reqwest::Client = reqwest::ClientBuilder::new()
+        .timeout(Duration::from_secs(5))
+        .build()
         .unwrap();
-
-    Html::parse_document(html.as_ref())
 }
 
-async fn get_json<T: DeserializeOwned>(url: &Url) -> Result<T, reqwest::Error> {
-    reqwest::get(url.as_str())
-        .await
-        .unwrap()
+async fn get_document(url: &Url) -> Result<Html, Box<dyn std::error::Error>> {
+    let html = HTTP_CLIENT.get(url.as_str())
+        .send()
+        .await?
+        .text()
+        .await?;
+
+    Ok(Html::parse_document(html.as_ref()))
+}
+
+async fn get_json<T: DeserializeOwned>(url: &Url) -> Result<T, Box<dyn std::error::Error>> {
+    let res = HTTP_CLIENT.get(url.as_str())
+        .send()
+        .await?
         .json::<T>()
-        .await
+        .await?;
+
+    Ok(res)
 }
 
 pub struct WebSite {
@@ -49,6 +59,10 @@ pub trait CachedPage<T> where T: Sized + TryFrom<WebSite> + Clone {
     fn decrease_page(&mut self);
     fn max(&self) -> u16;
 
+    fn cached_page_html(&self, _: u16) -> Option<Html> {
+        None
+    }
+
     fn is_over_min(&self) -> bool {
         self.page() == 0
     }
@@ -58,9 +72,9 @@ pub trait CachedPage<T> where T: Sized + TryFrom<WebSite> + Clone {
         max != 0 && self.page() > max
     }
 
-    fn get_page_html(&self, page: u16) -> Html {
+    fn get_page_html(&self, page: u16) -> Option<Html> {
         let url = self.url(&page);
-        block_on(get_document(&url))
+        block_on(get_document(&url)).ok()
     }
 
     fn get(&self, page: u16, ignore_cache: bool) -> Option<T> {
@@ -74,14 +88,20 @@ pub trait CachedPage<T> where T: Sized + TryFrom<WebSite> + Clone {
             return cache.get(&page).unwrap().as_ref().cloned();
         }
 
-        let url = self.url(&page);
-        let document = self.get_page_html(page);
-
-        if let Ok(board) = T::try_from(WebSite { url, document }) {
-            Some(board)
+        let document = if let Some(v) = self.cached_page_html(page) {
+            Some(v)
         } else {
-            None
+            self.get_page_html(page)
+        };
+
+        if let Some(document) = document {
+            let url = self.url(&page);
+            if let Ok(board) = T::try_from(WebSite { url, document }) {
+                return Some(board);
+            }
         }
+
+        None
     }
 
     fn get_and_cache(&mut self, page: u16, ignore_cache: bool) -> Option<T> {

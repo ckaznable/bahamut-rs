@@ -1,4 +1,6 @@
-use std::{error::Error, sync::mpsc::{channel, Sender, Receiver}, thread::{JoinHandle, self}, io, time::Duration, collections::HashMap};
+extern crate lazy_static;
+
+use std::{error::Error, sync::mpsc::{channel, Sender, Receiver}, thread::{JoinHandle, self}, io, time::Duration, collections::HashMap, cell::RefCell};
 
 use bahamut::api::{search::BoardSearch, board::BoardPage, CachedPage, post::{PostPage, Post, PostPageUrlParameter, PostComment}};
 use channel::{FetchDataMsg, DataRequestMsg, PageData};
@@ -68,8 +70,6 @@ fn run_app<B: Backend>(
         };
 
         if let Ok(v) = rx.try_recv() {
-            app.loading = false;
-
             match v {
                 FetchDataMsg::SearchResult(v) => {
                     app.search.items(v);
@@ -101,16 +101,18 @@ fn run_app<B: Backend>(
                     app.comment.items(v);
                 }
             }
+
+            app.loading = false;
         }
     }
 }
 
 fn run_fetcher(tx: Sender<FetchDataMsg>, rx: Receiver<DataRequestMsg>) -> JoinHandle<()> {
-    let rt = Builder::new_multi_thread().enable_all().build().unwrap();
     thread::spawn(move || {
-        let mut board_cache: HashMap<String, BoardPage> = HashMap::new();
-        let mut post_cache: HashMap<String, PostPage> = HashMap::new();
+        let mut board_cache: HashMap<String, RefCell<BoardPage>> = HashMap::new();
+        let mut post_cache: HashMap<String, RefCell<PostPage>> = HashMap::new();
 
+        let rt = Builder::new_multi_thread().enable_all().build().unwrap();
         rt.block_on(async {
             loop {
                 if let Ok(msg) = rx.recv() {
@@ -126,7 +128,8 @@ fn run_fetcher(tx: Sender<FetchDataMsg>, rx: Receiver<DataRequestMsg>) -> JoinHa
                         // board page request
                         DataRequestMsg::BoardPage(id, page) => {
                             if let Some(board_page) = board_cache.get(&id) {
-                                if let Some(board) = board_page.get(page, false) {
+                                let mut board_page = board_page.borrow_mut();
+                                if let Some(board) = board_page.get_and_cache(page, false) {
                                     let items = board.post();
                                     let page_data = PageData { page, items, max: board_page.max };
                                     tx.send(FetchDataMsg::BoardPage(page_data)).map_or((), |_|());
@@ -137,13 +140,13 @@ fn run_fetcher(tx: Sender<FetchDataMsg>, rx: Receiver<DataRequestMsg>) -> JoinHa
                             let mut board = BoardPage::from_page(id.as_ref(), page);
                             board.init();
 
-                            let items = match board.get(page, false) {
+                            let items = match board.get_and_cache(page, false) {
                                 Some(board) => board.post(),
                                 None => vec!()
                             };
 
                             let page_data = PageData { page, items, max: board.max };
-                            board_cache.insert(id, board);
+                            board_cache.insert(id, RefCell::new(board));
                             tx.send(FetchDataMsg::BoardPage(page_data)).map_or((), |_|());
                         }
 
@@ -151,7 +154,8 @@ fn run_fetcher(tx: Sender<FetchDataMsg>, rx: Receiver<DataRequestMsg>) -> JoinHa
                         DataRequestMsg::PostPage(url, page) => {
                             let cache_key = url.to_owned();
                             if let Some(post_page) = post_cache.get(&cache_key) {
-                                if let Some(post) = post_page.get(page, false) {
+                                let mut post_page = post_page.borrow_mut();
+                                if let Some(post) = post_page.get_and_cache(page, false) {
                                     let page_data = PageData { page, items: post, max: post_page.max };
                                     tx.send(FetchDataMsg::PostPage(page_data)).map_or((), |_|());
                                     continue;
@@ -162,13 +166,13 @@ fn run_fetcher(tx: Sender<FetchDataMsg>, rx: Receiver<DataRequestMsg>) -> JoinHa
                             let mut post_page = PostPage::try_from(param).unwrap();
                             post_page.init();
 
-                            let items = match post_page.get(page, false) {
+                            let items = match post_page.get_and_cache(page, false) {
                                 None => Post::default(),
                                 Some(post) => post,
                             };
 
                             let page_data = PageData { page, items, max: post_page.max };
-                            post_cache.insert(cache_key, post_page);
+                            post_cache.insert(cache_key, RefCell::new(post_page));
                             tx.send(FetchDataMsg::PostPage(page_data)).map_or((), |_|())
                         }
 

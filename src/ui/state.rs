@@ -3,16 +3,11 @@ use ratatui::widgets::ListState;
 use tui_input::Input;
 
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Default)]
 pub enum InputMode {
+    #[default]
     Normal,
     Edit,
-}
-
-impl Default for InputMode {
-    fn default() -> Self {
-        InputMode::Normal
-    }
 }
 
 pub enum Page {
@@ -300,7 +295,10 @@ impl PostPageState {
 
     fn scrollable(&self) -> bool {
         if let Some(desc) = self.current() {
-            desc.desc.len() - self.scroll_offset > self.scroll_size
+            let desc = &desc.desc;
+
+            !desc.is_empty() && desc.len() >= self.scroll_offset &&
+            desc.len() - self.scroll_offset > self.scroll_size
         } else {
             false
         }
