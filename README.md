@@ -13,6 +13,18 @@
 
 ## TUI
 
+### 安裝方式
+
+先到 [release頁面](https://github.com/ckaznable/bahamut-rs/releases/tag/latest) 下載跟系統相對應的檔案後解壓縮
+
+之後直接執行
+
+```shell
+> ./bahamut
+```
+
+### 功能
+
 - [ ] 重新整理
 - [x] 搜尋看板
 - [ ] 本地收藏看板
