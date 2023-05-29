@@ -1,9 +1,9 @@
 use bahamut::api::post::PostContent;
 use ratatui::{
-    widgets::{StatefulWidget, Block, Paragraph, Widget, Borders, Wrap},
-    layout::{Layout, Constraint, Rect, Direction},
     buffer::Buffer,
-    text::Spans
+    layout::{Constraint, Direction, Layout, Rect},
+    text::Spans,
+    widgets::{Block, Borders, Paragraph, StatefulWidget, Widget, Wrap},
 };
 
 use super::state::PostPageState;
@@ -17,25 +17,19 @@ impl StatefulWidget for PostPageUI {
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
         let layout = Layout::default()
             .direction(Direction::Vertical)
-            .constraints([
-                Constraint::Length(6),
-                Constraint::Min(0),
-            ])
+            .constraints([Constraint::Length(6), Constraint::Min(0)])
             .split(area);
 
         state.scroll_size(layout[1].height as usize);
 
         let top = Layout::default()
             .direction(Direction::Horizontal)
-            .constraints([
-                Constraint::Percentage(25),
-                Constraint::Min(0),
-            ])
+            .constraints([Constraint::Percentage(25), Constraint::Min(0)])
             .split(layout[0]);
 
         // user
         let current = PostContent::default();
-        let current = state.current().map_or(&current, |x|x);
+        let current = state.current().map_or(&current, |x| x);
         Paragraph::new(vec![
             Spans::from(current.user.id.as_ref()),
             Spans::from(current.user.name.as_ref()),
@@ -49,13 +43,14 @@ impl StatefulWidget for PostPageUI {
         Paragraph::new(vec![
             Spans::from(state.data.title.as_ref()),
             Spans::from(format!("{}樓", current.floor)),
-            Spans::from(current.date.as_ref())
+            Spans::from(current.date.as_ref()),
         ])
         .block(Block::default().borders(Borders::ALL))
         .render(top[1], buf);
 
         // desc
-        let desc: Vec<Spans> = current.desc
+        let desc: Vec<Spans> = current
+            .desc
             .iter()
             .skip(state.scroll_offset)
             .map(|s| Spans::from(s.to_owned()))

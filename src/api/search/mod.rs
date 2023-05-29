@@ -85,8 +85,10 @@ impl TryFrom<ElementRef<'_>> for SearchResult {
     type Error = &'static str;
 
     fn try_from(document: ElementRef) -> Result<Self, Self::Error> {
-        let id = if let Some(id) = SearchResult::try_id_from_html(&document) { id } else {
-            return Err("")
+        let id = if let Some(id) = SearchResult::try_id_from_html(&document) {
+            id
+        } else {
+            return Err("");
         };
 
         let sr = SearchResult {
@@ -98,4 +100,3 @@ impl TryFrom<ElementRef<'_>> for SearchResult {
         Ok(sr)
     }
 }
-

@@ -1,4 +1,9 @@
-use ratatui::{widgets::{StatefulWidget, List, Block, ListItem, Borders, Widget}, layout::{Layout, Constraint, Alignment}, style::{Style, Modifier}, text::Spans};
+use ratatui::{
+    layout::{Alignment, Constraint, Layout},
+    style::{Modifier, Style},
+    text::Spans,
+    widgets::{Block, Borders, List, ListItem, StatefulWidget, Widget},
+};
 
 use super::state::BoardPageState;
 
@@ -7,12 +12,14 @@ pub struct BoardPageUI;
 impl StatefulWidget for BoardPageUI {
     type State = BoardPageState;
 
-    fn render(self, area: ratatui::layout::Rect, buf: &mut ratatui::buffer::Buffer, state: &mut Self::State) {
+    fn render(
+        self,
+        area: ratatui::layout::Rect,
+        buf: &mut ratatui::buffer::Buffer,
+        state: &mut Self::State,
+    ) {
         let layout = Layout::default()
-            .constraints([
-                Constraint::Min(0),
-                Constraint::Length(1)
-            ])
+            .constraints([Constraint::Min(0), Constraint::Length(1)])
             .horizontal_margin(1)
             .split(area);
 
@@ -21,11 +28,10 @@ impl StatefulWidget for BoardPageUI {
             .title_alignment(Alignment::Center)
             .borders(Borders::ALL);
 
-        let items: Vec<ListItem> = state.items
+        let items: Vec<ListItem> = state
+            .items
             .iter()
-            .map(|item| {
-                ListItem::new(vec![Spans::from(item.title.as_ref())])
-            })
+            .map(|item| ListItem::new(vec![Spans::from(item.title.as_ref())]))
             .collect();
 
         let selected_style = Style::default().add_modifier(Modifier::REVERSED);

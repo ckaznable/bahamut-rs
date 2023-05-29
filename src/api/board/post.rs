@@ -1,6 +1,6 @@
-use crate::api::{DN, UrlWithId};
+use crate::api::{UrlWithId, DN};
 
-use super::category::{BoardCategoryId, BoardCategory};
+use super::category::{BoardCategory, BoardCategoryId};
 
 use scraper::{ElementRef, Selector};
 use url::Url;
@@ -34,8 +34,8 @@ impl Default for BoardPost {
                 id: BoardCategoryId {
                     id: empty.to_string(),
                     sub_id: empty.to_string(),
-                }
-            }
+                },
+            },
         }
     }
 }
@@ -119,7 +119,7 @@ impl TryFrom<ElementRef<'_>> for BoardPost {
                     }
 
                     if k == "tnum" {
-                        post.floor(v.parse::<u16>().map_or(0, |v|v));
+                        post.floor(v.parse::<u16>().map_or(0, |v| v));
                     }
                 });
         }
@@ -146,7 +146,8 @@ impl TryFrom<ElementRef<'_>> for BoardPost {
         }
 
         // reply
-        let selector = Selector::parse(".b-list__count__number span").expect("parse selector error");
+        let selector =
+            Selector::parse(".b-list__count__number span").expect("parse selector error");
         if let Some(dom) = elm.select(&selector).next() {
             let text: String = dom.text().collect::<String>().trim().into();
             post.reply_count(text.parse::<u16>().unwrap());
@@ -164,7 +165,8 @@ impl TryFrom<ElementRef<'_>> for BoardPost {
         if let Some(dom) = elm.select(&selector).next() {
             let name = dom.text().collect::<String>();
             let href = dom.value().attr("href").unwrap();
-            let url = Url::parse(format!("{}/{}", DN, href).as_str()).expect("invalid category url");
+            let url =
+                Url::parse(format!("{}/{}", DN, href).as_str()).expect("invalid category url");
 
             post.category(BoardCategory {
                 name,

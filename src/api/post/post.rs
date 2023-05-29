@@ -16,17 +16,16 @@ pub struct Post {
 impl Post {
     pub fn posts(document: &ElementRef) -> Vec<PostContent> {
         let selector = Post::get_root_elm_selector();
-        document.select(&selector)
+        document
+            .select(&selector)
             .filter_map(|dom| {
-                Some(
-                    PostContent {
-                        id: PostContent::try_id_from_html(&dom)?,
-                        desc: PostContent::try_desc_from_html(&dom)?,
-                        user: User::try_from(&dom).ok()?,
-                        floor: PostContent::try_floor_from_html(&dom)?,
-                        date: PostContent::try_date_from_html(&dom)?,
-                    }
-                )
+                Some(PostContent {
+                    id: PostContent::try_id_from_html(&dom)?,
+                    desc: PostContent::try_desc_from_html(&dom)?,
+                    user: User::try_from(&dom).ok()?,
+                    floor: PostContent::try_floor_from_html(&dom)?,
+                    date: PostContent::try_date_from_html(&dom)?,
+                })
             })
             .collect::<Vec<PostContent>>()
     }
@@ -36,17 +35,19 @@ impl Post {
     }
 
     fn try_id_from_url(url: &Url) -> Option<String> {
-        let query = url.query_pairs()
+        let query = url
+            .query_pairs()
             .find(|(k, _)| k == "snA")
-            .map(|(_, v)|v)?;
+            .map(|(_, v)| v)?;
 
         Some(query.to_string())
     }
 
     fn try_last_floor_from_url(url: &Url) -> Option<u16> {
-        let query = url.query_pairs()
+        let query = url
+            .query_pairs()
             .find(|(k, _)| k == "tnum")
-            .map(|(_, v)|v)?;
+            .map(|(_, v)| v)?;
 
         Some(query.parse().unwrap())
     }
@@ -69,10 +70,7 @@ impl TryFrom<WebSite> for Post {
     fn try_from(web: WebSite) -> Result<Self, Self::Error> {
         let WebSite { url, document } = web;
         let selector = Post::get_root_elm_selector();
-        let top_post_elm= document
-            .select(&selector)
-            .next()
-            .unwrap();
+        let top_post_elm = document.select(&selector).next().unwrap();
 
         let post = Post {
             id: Post::try_id_from_url(&url).ok_or("can't get id")?,

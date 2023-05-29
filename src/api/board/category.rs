@@ -7,7 +7,7 @@ use crate::api::{UrlWithId, DN};
 #[derive(Clone, Serialize)]
 pub struct BoardCategoryId {
     pub id: String,
-    pub sub_id: String
+    pub sub_id: String,
 }
 
 impl TryFrom<Url> for BoardCategoryId {
