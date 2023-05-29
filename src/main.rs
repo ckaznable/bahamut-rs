@@ -1,16 +1,40 @@
 extern crate lazy_static;
 
-use std::{error::Error, sync::mpsc::{channel, Sender, Receiver}, thread::{JoinHandle, self}, io, time::Duration, collections::HashMap, cell::RefCell};
+use std::{
+    cell::RefCell,
+    collections::HashMap,
+    error::Error,
+    io,
+    sync::mpsc::{channel, Receiver, Sender},
+    thread::{self, JoinHandle},
+    time::Duration,
+};
 
-use bahamut::api::{search::BoardSearch, board::BoardPage, CachedPage, post::{PostPage, Post, PostPageUrlParameter, PostComment}};
-use channel::{FetchDataMsg, DataRequestMsg, PageData};
-use crossterm::{terminal::{enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode}, execute, event::{DisableMouseCapture, Event, self}};
-use ratatui::{backend::{CrosstermBackend, Backend}, Terminal};
+use bahamut::api::{
+    board::BoardPage,
+    post::{Post, PostComment, PostPage, PostPageUrlParameter},
+    search::BoardSearch,
+    CachedPage,
+};
+use channel::{DataRequestMsg, FetchDataMsg, PageData};
+use crossterm::{
+    event::{self, DisableMouseCapture, Event},
+    execute,
+    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+};
+use ratatui::{
+    backend::{Backend, CrosstermBackend},
+    Terminal,
+};
 use tokio::runtime::Builder;
-use ui::{state::{AppState, ListStateInit, Page}, key::handle_key, ui};
+use ui::{
+    key::handle_key,
+    state::{AppState, ListStateInit, Page},
+    ui,
+};
 
-mod ui;
 mod channel;
+mod ui;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -95,7 +119,7 @@ fn run_app<B: Backend>(
                         app.post.page(v.page);
                         app.post.next();
                     }
-                },
+                }
                 FetchDataMsg::CommentPage(v) => {
                     app.page = Page::Comment;
                     app.comment.items(v);
@@ -126,14 +150,21 @@ fn run_fetcher(tx: Sender<FetchDataMsg>, rx: Receiver<DataRequestMsg>) -> JoinHa
                         }
 
                         // board page request
-                        DataRequestMsg::BoardPage(id, page) => {
-                            if let Some(board_page) = board_cache.get(&id) {
-                                let mut board_page = board_page.borrow_mut();
-                                if let Some(board) = board_page.get_and_cache(page, false) {
-                                    let items = board.post();
-                                    let page_data = PageData { page, items, max: board_page.max };
-                                    tx.send(FetchDataMsg::BoardPage(page_data)).map_or((), |_|());
-                                    continue;
+                        DataRequestMsg::BoardPage(id, page, use_cache) => {
+                            if use_cache {
+                                if let Some(board_page) = board_cache.get(&id) {
+                                    let mut board_page = board_page.borrow_mut();
+                                    if let Some(board) = board_page.get_and_cache(page, false) {
+                                        let items = board.post();
+                                        let page_data = PageData {
+                                            page,
+                                            items,
+                                            max: board_page.max,
+                                        };
+                                        tx.send(FetchDataMsg::BoardPage(page_data))
+                                            .map_or((), |_| ());
+                                        continue;
+                                    }
                                 }
                             }
 
@@ -142,23 +173,36 @@ fn run_fetcher(tx: Sender<FetchDataMsg>, rx: Receiver<DataRequestMsg>) -> JoinHa
 
                             let items = match board.get_and_cache(page, false) {
                                 Some(board) => board.post(),
-                                None => vec!()
+                                None => vec![],
                             };
 
-                            let page_data = PageData { page, items, max: board.max };
+                            let page_data = PageData {
+                                page,
+                                items,
+                                max: board.max,
+                            };
                             board_cache.insert(id, RefCell::new(board));
-                            tx.send(FetchDataMsg::BoardPage(page_data)).map_or((), |_|());
+                            tx.send(FetchDataMsg::BoardPage(page_data))
+                                .map_or((), |_| ());
                         }
 
                         // post page request
-                        DataRequestMsg::PostPage(url, page) => {
+                        DataRequestMsg::PostPage(url, page, use_cache) => {
                             let cache_key = url.to_owned();
-                            if let Some(post_page) = post_cache.get(&cache_key) {
-                                let mut post_page = post_page.borrow_mut();
-                                if let Some(post) = post_page.get_and_cache(page, false) {
-                                    let page_data = PageData { page, items: post, max: post_page.max };
-                                    tx.send(FetchDataMsg::PostPage(page_data)).map_or((), |_|());
-                                    continue;
+
+                            if use_cache {
+                                if let Some(post_page) = post_cache.get(&cache_key) {
+                                    let mut post_page = post_page.borrow_mut();
+                                    if let Some(post) = post_page.get_and_cache(page, false) {
+                                        let page_data = PageData {
+                                            page,
+                                            items: post,
+                                            max: post_page.max,
+                                        };
+                                        tx.send(FetchDataMsg::PostPage(page_data))
+                                            .map_or((), |_| ());
+                                        continue;
+                                    }
                                 }
                             }
 
@@ -171,19 +215,25 @@ fn run_fetcher(tx: Sender<FetchDataMsg>, rx: Receiver<DataRequestMsg>) -> JoinHa
                                 Some(post) => post,
                             };
 
-                            let page_data = PageData { page, items, max: post_page.max };
+                            let page_data = PageData {
+                                page,
+                                items,
+                                max: post_page.max,
+                            };
                             post_cache.insert(cache_key, RefCell::new(post_page));
-                            tx.send(FetchDataMsg::PostPage(page_data)).map_or((), |_|())
+                            tx.send(FetchDataMsg::PostPage(page_data))
+                                .map_or((), |_| ())
                         }
 
                         // comment
                         DataRequestMsg::CommentPage(id, c_id) => {
-                            let res = match PostComment::get_comment(id.to_owned(), c_id.to_owned()) {
+                            let res = match PostComment::get_comment(id.to_owned(), c_id.to_owned())
+                            {
                                 Ok(v) => v,
-                                Err(_) => vec![]
+                                Err(_) => vec![],
                             };
 
-                            tx.send(FetchDataMsg::CommentPage(res)).map_or((), |_|());
+                            tx.send(FetchDataMsg::CommentPage(res)).map_or((), |_| ());
                         }
                     };
                 };

@@ -1,11 +1,11 @@
-use std::{sync::mpsc::Sender, rc::Rc, cell::RefCell};
+use std::{cell::RefCell, rc::Rc, sync::mpsc::Sender};
 
-use crossterm::event::{KeyEvent, KeyCode, Event, KeyModifiers};
+use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
 use tui_input::backend::crossterm::EventHandler;
 
 use crate::channel::DataRequestMsg;
 
-use super::state::{AppState, Page, CursorMoveable, InputMode};
+use super::state::{AppState, CursorMoveable, InputMode, Page};
 
 #[derive(PartialEq)]
 pub enum KeyBindEvent {
@@ -36,8 +36,18 @@ pub fn handle_key(app: &mut AppState, event: KeyEvent, tx: Sender<DataRequestMsg
     }
 }
 
-fn handle_general_key(app: &mut AppState, event: KeyEvent, _: Sender<DataRequestMsg>) -> KeyBindEvent {
-    if let KeyEvent { code: KeyCode::Char('c'), modifiers: KeyModifiers::CONTROL, kind: _, state: _ } = event {
+fn handle_general_key(
+    app: &mut AppState,
+    event: KeyEvent,
+    _: Sender<DataRequestMsg>,
+) -> KeyBindEvent {
+    if let KeyEvent {
+        code: KeyCode::Char('c'),
+        modifiers: KeyModifiers::CONTROL,
+        kind: _,
+        state: _,
+    } = event
+    {
         return KeyBindEvent::Quit;
     }
 
@@ -55,24 +65,29 @@ fn handle_general_key(app: &mut AppState, event: KeyEvent, _: Sender<DataRequest
     KeyBindEvent::None
 }
 
-fn handle_search_key(app: &mut AppState, event: KeyEvent, tx: Sender<DataRequestMsg>) -> KeyBindEvent {
+fn handle_search_key(
+    app: &mut AppState,
+    event: KeyEvent,
+    tx: Sender<DataRequestMsg>,
+) -> KeyBindEvent {
     match app.search.mode {
         InputMode::Normal => match event.code {
             KeyCode::Char('j') | KeyCode::Down => app.search.next(),
             KeyCode::Char('k') | KeyCode::Up => app.search.previous(),
-            KeyCode::Char('a' |'e' | 'i' | 'o') => app.search.mode(InputMode::Edit),
+            KeyCode::Char('a' | 'e' | 'i' | 'o') => app.search.mode(InputMode::Edit),
             KeyCode::Enter => {
                 if let Some(i) = app.search.state.selected() {
                     if let Some(board) = app.search.items.get(i) {
                         app.loading = true;
                         app.board.name(board.name.to_owned());
                         app.board.id(board.id.to_owned());
-                        tx.send(DataRequestMsg::BoardPage(board.id.to_string(), 1)).map_or(() , |_|());
+                        tx.send(DataRequestMsg::BoardPage(board.id.to_string(), 1, true))
+                            .map_or((), |_| ());
                     }
                 }
             }
-            _ => ()
-        }
+            _ => (),
+        },
         InputMode::Edit => match event.code {
             KeyCode::Esc => app.search.mode(InputMode::Normal),
             KeyCode::Enter => {
@@ -80,7 +95,8 @@ fn handle_search_key(app: &mut AppState, event: KeyEvent, tx: Sender<DataRequest
                 let value = app.search.input.value();
                 if !value.is_empty() {
                     app.loading = true;
-                    tx.send(DataRequestMsg::SearchResult(value.into())).map_or((), |_|());
+                    tx.send(DataRequestMsg::SearchResult(value.into()))
+                        .map_or((), |_| ());
                 }
             }
             _ => {
@@ -92,7 +108,11 @@ fn handle_search_key(app: &mut AppState, event: KeyEvent, tx: Sender<DataRequest
     KeyBindEvent::None
 }
 
-fn handle_board_key(app: &mut AppState, event: KeyEvent, tx: Sender<DataRequestMsg>) -> KeyBindEvent {
+fn handle_board_key(
+    app: &mut AppState,
+    event: KeyEvent,
+    tx: Sender<DataRequestMsg>,
+) -> KeyBindEvent {
     match event.code {
         KeyCode::Char('j') | KeyCode::Down => app.board.next(),
         KeyCode::Char('k') | KeyCode::Up => app.board.previous(),
@@ -101,7 +121,12 @@ fn handle_board_key(app: &mut AppState, event: KeyEvent, tx: Sender<DataRequestM
                 app.board.page(1)
             } else {
                 app.loading = true;
-                tx.send(DataRequestMsg::BoardPage(app.board.id.to_owned(), app.board.page - 1)).map_or((), |_|())
+                tx.send(DataRequestMsg::BoardPage(
+                    app.board.id.to_owned(),
+                    app.board.page - 1,
+                    true,
+                ))
+                .map_or((), |_| ())
             }
         }
         KeyCode::Char('l') | KeyCode::Right => {
@@ -109,7 +134,12 @@ fn handle_board_key(app: &mut AppState, event: KeyEvent, tx: Sender<DataRequestM
                 app.board.page(app.board.last_page)
             } else {
                 app.loading = true;
-                tx.send(DataRequestMsg::BoardPage(app.board.id.to_owned(), app.board.page + 1)).map_or(() , |_|())
+                tx.send(DataRequestMsg::BoardPage(
+                    app.board.id.to_owned(),
+                    app.board.page + 1,
+                    true,
+                ))
+                .map_or((), |_| ())
             }
         }
         KeyCode::Enter => {
@@ -117,9 +147,19 @@ fn handle_board_key(app: &mut AppState, event: KeyEvent, tx: Sender<DataRequestM
                 if let Some(post) = app.board.items.get(v) {
                     app.loading = true;
                     app.post.url = post.url.to_string();
-                    tx.send(DataRequestMsg::PostPage(post.url.to_string(), 1)).map_or((), |_|())
+                    tx.send(DataRequestMsg::PostPage(post.url.to_string(), 1, true))
+                        .map_or((), |_| ())
                 }
             }
+        }
+        KeyCode::Char('r') => {
+            app.loading = true;
+            tx.send(DataRequestMsg::BoardPage(
+                app.board.id.to_owned(),
+                app.board.page,
+                false,
+            ))
+            .map_or((), |_| ())
         }
         _ => (),
     }
@@ -127,13 +167,22 @@ fn handle_board_key(app: &mut AppState, event: KeyEvent, tx: Sender<DataRequestM
     KeyBindEvent::None
 }
 
-fn handle_post_key(app: &mut AppState, event: KeyEvent, tx: Sender<DataRequestMsg>) -> KeyBindEvent {
+fn handle_post_key(
+    app: &mut AppState,
+    event: KeyEvent,
+    tx: Sender<DataRequestMsg>,
+) -> KeyBindEvent {
     let app = Rc::new(RefCell::new(app));
     let next = |app: &Rc<RefCell<&mut AppState>>| {
         let mut app = app.borrow_mut();
         if app.post.next().is_none() && app.post.has_next() {
             app.loading = true;
-            tx.send(DataRequestMsg::PostPage(app.post.url.to_owned(), app.post.page + 1)).map_or((), |_|());
+            tx.send(DataRequestMsg::PostPage(
+                app.post.url.to_owned(),
+                app.post.page + 1,
+                false,
+            ))
+            .map_or((), |_| ());
         }
     };
 
@@ -145,14 +194,28 @@ fn handle_post_key(app: &mut AppState, event: KeyEvent, tx: Sender<DataRequestMs
         KeyCode::Char('j') | KeyCode::Down => app.borrow_mut().post.scroll_down(),
         KeyCode::Char('k') | KeyCode::Up => app.borrow_mut().post.scroll_up(),
         KeyCode::Char('o') => {
-            let mut _app = app.borrow_mut();
-            _app.loading = true;
-            _app.comment.init();
-            if let Some(content) = _app.post.current() {
-                tx.send(DataRequestMsg::CommentPage(_app.board.id.to_owned(), content.id.to_owned())).map_or((), |_|());
+            let mut app = app.borrow_mut();
+            app.loading = true;
+            app.comment.init();
+            if let Some(content) = app.post.current() {
+                tx.send(DataRequestMsg::CommentPage(
+                    app.board.id.to_owned(),
+                    content.id.to_owned(),
+                ))
+                .map_or((), |_| ());
             }
         }
-        _ => ()
+        KeyCode::Char('r') => {
+            let mut app = app.borrow_mut();
+            app.loading = true;
+            tx.send(DataRequestMsg::PostPage(
+                app.post.url.to_owned(),
+                app.post.page,
+                false,
+            ))
+            .map_or((), |_| ())
+        }
+        _ => (),
     };
 
     // with control
@@ -160,23 +223,28 @@ fn handle_post_key(app: &mut AppState, event: KeyEvent, tx: Sender<DataRequestMs
         code,
         modifiers: KeyModifiers::CONTROL,
         kind: _,
-        state: _
-    } = event {
+        state: _,
+    } = event
+    {
         match code {
             KeyCode::Char('f') => next(&app),
             KeyCode::Char('b') => app.borrow_mut().post.previous(),
-            _ => ()
+            _ => (),
         }
     };
 
     KeyBindEvent::None
 }
 
-fn handle_comment_key(app: &mut AppState, event: KeyEvent, _: Sender<DataRequestMsg>) -> KeyBindEvent {
+fn handle_comment_key(
+    app: &mut AppState,
+    event: KeyEvent,
+    _: Sender<DataRequestMsg>,
+) -> KeyBindEvent {
     match event.code {
         KeyCode::Char('j') | KeyCode::Down => app.comment.next(),
         KeyCode::Char('k') | KeyCode::Up => app.comment.previous(),
-        _ => ()
+        _ => (),
     };
 
     KeyBindEvent::None
