@@ -1,3 +1,4 @@
+#[allow(clippy::module_inception)]
 mod board;
 mod category;
 mod page;
