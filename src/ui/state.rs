@@ -1,7 +1,10 @@
-use bahamut::api::{search::SearchResult, board::BoardPost, post::{Post, PostContent, PostComment}};
+use bahamut::api::{
+    board::BoardPost,
+    post::{Post, PostComment, PostContent},
+    search::SearchResult,
+};
 use ratatui::widgets::ListState;
 use tui_input::Input;
-
 
 #[derive(Clone, PartialEq, Default)]
 pub enum InputMode {
@@ -37,7 +40,7 @@ pub trait CursorMoveable {
         let max = self.max();
 
         if i > 0 {
-            return i - 1
+            return i - 1;
         }
 
         // i == 0
@@ -125,7 +128,7 @@ impl ListStateInit<SearchResult> for SearchPageState {
 
 impl CursorMoveable for SearchPageState {
     fn index(&self) -> usize {
-        self.state.selected().map_or(1, |x|x)
+        self.state.selected().map_or(1, |x| x)
     }
 
     fn max(&self) -> usize {
@@ -189,7 +192,7 @@ impl ListStateInit<BoardPost> for BoardPageState {
 
 impl CursorMoveable for BoardPageState {
     fn index(&self) -> usize {
-        self.state.selected().map_or(1, |x|x)
+        self.state.selected().map_or(1, |x| x)
     }
 
     fn max(&self) -> usize {
@@ -270,7 +273,7 @@ impl PostPageState {
     }
 
     fn next_index(&self) -> usize {
-        ( self.index + 1 ) as usize
+        (self.index + 1) as usize
     }
 
     pub fn current(&self) -> Option<&PostContent> {
@@ -297,8 +300,9 @@ impl PostPageState {
         if let Some(desc) = self.current() {
             let desc = &desc.desc;
 
-            !desc.is_empty() && desc.len() >= self.scroll_offset &&
-            desc.len() - self.scroll_offset > self.scroll_size
+            !desc.is_empty()
+                && desc.len() >= self.scroll_offset
+                && desc.len() - self.scroll_offset > self.scroll_size
         } else {
             false
         }

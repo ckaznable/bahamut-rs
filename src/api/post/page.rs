@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use scraper::{Html, Selector, ElementRef};
+use scraper::{ElementRef, Html, Selector};
 use url::Url;
 
 use crate::api::{CachedPage, DN};
@@ -17,7 +17,9 @@ pub struct PostPageUrlParameter {
 impl TryFrom<String> for PostPageUrlParameter {
     type Error = &'static str;
     fn try_from(value: String) -> Result<Self, Self::Error> {
-        let url = Url::parse(value.as_str()).map_err(|_| "invalid url string").unwrap();
+        let url = Url::parse(value.as_str())
+            .map_err(|_| "invalid url string")
+            .unwrap();
         PostPageUrlParameter::try_from(url).map_err(|_| "")
     }
 }
@@ -36,7 +38,7 @@ impl TryFrom<Url> for PostPageUrlParameter {
             }
 
             if k == "tnum" {
-                ppup.floor = v.to_string().parse::<u16>().map_or(0, |v|v);
+                ppup.floor = v.to_string().parse::<u16>().map_or(0, |v| v);
             }
         });
 
@@ -71,7 +73,7 @@ impl PostPage {
     pub fn init(&mut self) {
         if let Some(document) = self.get_page_html(1) {
             let root = document.root_element();
-            let max = PostPage::try_page_from_html(&root).map_or(0, |v|v);
+            let max = PostPage::try_page_from_html(&root).map_or(0, |v| v);
             self.max = max;
             self.first_page_html = Some(document);
         }
@@ -114,7 +116,10 @@ impl CachedPage<Post> for PostPage {
     }
 
     fn url(&self, page: &u16) -> Url {
-        let url = format!("{}C.php?bsn={}&snA={}&page={}&tnum={}", DN, self.board_id, self.id, page, self.floor);
+        let url = format!(
+            "{}C.php?bsn={}&snA={}&page={}&tnum={}",
+            DN, self.board_id, self.id, page, self.floor
+        );
         Url::parse(url.as_ref()).unwrap()
     }
 
@@ -139,7 +144,11 @@ impl TryFrom<PostPageUrlParameter> for PostPage {
     type Error = &'static str;
 
     fn try_from(value: PostPageUrlParameter) -> Result<Self, Self::Error> {
-        let PostPageUrlParameter { board_id, id, floor } = value;
+        let PostPageUrlParameter {
+            board_id,
+            id,
+            floor,
+        } = value;
         let mut page = PostPage::new(board_id.as_ref(), id.as_ref());
         page.floor(floor);
         Ok(page)
@@ -157,14 +166,12 @@ pub struct PostPageRef {
 impl TryFrom<&PostPage> for PostPageRef {
     type Error = &'static str;
     fn try_from(value: &PostPage) -> Result<Self, Self::Error> {
-        Ok(
-            PostPageRef {
-                board_id: value.board_id.to_owned(),
-                id: value.id.to_owned(),
-                page: value.page,
-                max: value.page,
-                floor: value.floor,
-            }
-        )
+        Ok(PostPageRef {
+            board_id: value.board_id.to_owned(),
+            id: value.id.to_owned(),
+            page: value.page,
+            max: value.page,
+            floor: value.floor,
+        })
     }
 }

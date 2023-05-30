@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use scraper::{Selector, ElementRef};
+use scraper::{ElementRef, Selector};
 use serde::Serialize;
 
 #[derive(Clone, Serialize)]
@@ -127,7 +127,7 @@ impl User {
             "hobbit.png" => UserRace::Dwarf,
             "fairy.png" => UserRace::Elf,
             "orc.png" => UserRace::Ork,
-            _ => UserRace::Unknown
+            _ => UserRace::Unknown,
         };
 
         Some(race)
@@ -152,7 +152,7 @@ impl User {
             "preist.png" => UserCareer::Preist,
             "archer.png" => UserCareer::Archer,
             "assassin.png" => UserCareer::Assassin,
-            _ => UserCareer::Unknown
+            _ => UserCareer::Unknown,
         };
 
         Some(crarrer)
@@ -167,8 +167,8 @@ impl TryFrom<&ElementRef<'_>> for User {
             lv: User::try_level_from_html(document).ok_or("user lv invalid")?,
             id: User::try_id_from_html(document).ok_or("user id invalid")?,
             name: User::try_name_from_html(document).ok_or("user name invalid")?,
-            race: User::try_race_from_html(document).map_or(UserRace::Unknown, |x|x),
-            carrer: User::try_crarrer_from_html(document).map_or(UserCareer::Unknown, |x|x),
+            race: User::try_race_from_html(document).map_or(UserRace::Unknown, |x| x),
+            carrer: User::try_crarrer_from_html(document).map_or(UserCareer::Unknown, |x| x),
         };
 
         Ok(user)

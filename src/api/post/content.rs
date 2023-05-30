@@ -1,9 +1,9 @@
-use scraper::{Selector, ElementRef};
+use scraper::{ElementRef, Selector};
 use serde::Serialize;
 
 use crate::api::user::User;
 
-use super::{PostDescription, comment::PostComment};
+use super::{comment::PostComment, PostDescription};
 
 pub trait CommentReadable {
     fn comment(&self) -> Vec<PostComment>;
@@ -35,17 +35,14 @@ impl PostContent {
             .attr("data-floor")
             .unwrap()
             .parse::<u16>()
-            .map_or(0u16, |v|v);
+            .map_or(0u16, |v| v);
 
         Some(floor)
     }
 
     pub fn try_id_from_html(document: &ElementRef) -> Option<String> {
         let selector = Selector::parse(".c-article").unwrap();
-        let id = document.select(&selector)
-            .next()?
-            .value()
-            .id()?;
+        let id = document.select(&selector).next()?.value().id()?;
 
         Some(id.replace("cf", ""))
     }
@@ -61,31 +58,34 @@ impl PostContent {
                 let is_pure_text = content.clone().next().is_none();
 
                 if is_pure_text {
-                    return el.text().map(|s|s.to_string()).collect::<PostDescription>();
+                    return el
+                        .text()
+                        .map(|s| s.to_string())
+                        .collect::<PostDescription>();
                 }
 
-                content.flat_map(|el| {
-                    // youtube
-                    let yt_selector = Selector::parse(".video-youtube iframe").unwrap();
-                    let yt = el.select(&yt_selector).next();
-                    if yt.is_some() {
-                        return vec![yt.unwrap().value().attr("data-src").unwrap().to_string()];
-                    }
+                content
+                    .flat_map(|el| {
+                        // youtube
+                        let yt_selector = Selector::parse(".video-youtube iframe").unwrap();
+                        let yt = el.select(&yt_selector).next();
+                        if yt.is_some() {
+                            return vec![yt.unwrap().value().attr("data-src").unwrap().to_string()];
+                        }
 
-                    // image
-                    let img_selector = Selector::parse("a img").unwrap();
-                    let img_dom = el.select(&img_selector);
-                    let img = img_dom.clone().next();
-                    if img.is_some() {
-                        return img_dom.map(|_img| {
-                                _img.value().attr("data-src").unwrap().to_string()
-                            })
-                            .collect::<Vec<String>>()
-                    }
+                        // image
+                        let img_selector = Selector::parse("a img").unwrap();
+                        let img_dom = el.select(&img_selector);
+                        let img = img_dom.clone().next();
+                        if img.is_some() {
+                            return img_dom
+                                .map(|_img| _img.value().attr("data-src").unwrap().to_string())
+                                .collect::<Vec<String>>();
+                        }
 
-                    vec![el.text().collect::<String>()]
-                })
-                .collect::<PostDescription>()
+                        vec![el.text().collect::<String>()]
+                    })
+                    .collect::<PostDescription>()
             })
             .collect::<PostDescription>();
 

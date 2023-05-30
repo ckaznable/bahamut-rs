@@ -1,4 +1,8 @@
-use bahamut::api::{search::SearchResult, board::BoardPost, post::{Post, PostComment}};
+use bahamut::api::{
+    board::BoardPost,
+    post::{Post, PostComment},
+    search::SearchResult,
+};
 
 pub struct PageData<T> {
     pub page: u16,
@@ -15,8 +19,8 @@ pub enum FetchDataMsg {
 
 pub enum DataRequestMsg {
     SearchResult(String),
-    BoardPage(String, u16),
-    PostPage(String, u16),
+    BoardPage(String, u16, bool),
+    PostPage(String, u16, bool),
     CommentPage(String, String),
     End,
 }

@@ -7,10 +7,10 @@ use scraper::Html;
 use serde::de::DeserializeOwned;
 use url::Url;
 
-pub mod post;
 pub mod board;
-pub mod user;
+pub mod post;
 pub mod search;
+pub mod user;
 
 pub static DN: &str = "https://forum.gamer.com.tw/";
 
@@ -22,17 +22,14 @@ lazy_static! {
 }
 
 async fn get_document(url: &Url) -> Result<Html, Box<dyn std::error::Error>> {
-    let html = HTTP_CLIENT.get(url.as_str())
-        .send()
-        .await?
-        .text()
-        .await?;
+    let html = HTTP_CLIENT.get(url.as_str()).send().await?.text().await?;
 
     Ok(Html::parse_document(html.as_ref()))
 }
 
 async fn get_json<T: DeserializeOwned>(url: &Url) -> Result<T, Box<dyn std::error::Error>> {
-    let res = HTTP_CLIENT.get(url.as_str())
+    let res = HTTP_CLIENT
+        .get(url.as_str())
         .send()
         .await?
         .json::<T>()
@@ -43,14 +40,17 @@ async fn get_json<T: DeserializeOwned>(url: &Url) -> Result<T, Box<dyn std::erro
 
 pub struct WebSite {
     pub url: Url,
-    pub document: Html
+    pub document: Html,
 }
 
 pub trait UrlWithId<T> {
     fn url(p: T) -> Url;
 }
 
-pub trait CachedPage<T> where T: Sized + TryFrom<WebSite> + Clone {
+pub trait CachedPage<T>
+where
+    T: Sized + TryFrom<WebSite> + Clone,
+{
     fn cache(&self) -> &HashMap<u16, Option<T>>;
     fn insert_cache(&mut self, page: &u16, obj: Option<T>);
     fn url(&self, page: &u16) -> Url;

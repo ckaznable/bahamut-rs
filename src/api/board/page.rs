@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use scraper::{Html, ElementRef, Selector};
+use scraper::{ElementRef, Html, Selector};
 use url::Url;
 
 use crate::api::{CachedPage, UrlWithId};
@@ -13,7 +13,7 @@ pub struct BoardPage {
     pub max: u16,
 
     cache: HashMap<u16, Option<Board>>,
-    first_page_cache: Option<Html>
+    first_page_cache: Option<Html>,
 }
 
 impl BoardPage {
@@ -33,14 +33,14 @@ impl BoardPage {
             page,
             max: 0,
             cache: HashMap::new(),
-            first_page_cache: None
+            first_page_cache: None,
         }
     }
 
     pub fn init(&mut self) {
         if let Some(document) = self.get_page_html(1) {
             let root = document.root_element();
-            let max = BoardPage::try_page_from_html(&root).map_or(0, |v|v);
+            let max = BoardPage::try_page_from_html(&root).map_or(0, |v| v);
             self.max = max;
             self.first_page_cache = Some(document);
         }

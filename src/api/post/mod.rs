@@ -1,6 +1,8 @@
 mod comment;
 mod content;
 mod page;
+
+#[allow(clippy::module_inception)]
 mod post;
 
 pub type PostDescription = Vec<String>;

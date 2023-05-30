@@ -3,9 +3,12 @@ use std::collections::HashMap;
 use scraper::{Html, Selector};
 use url::Url;
 
-use crate::api::{WebSite, UrlWithId, DN};
+use crate::api::{UrlWithId, WebSite, DN};
 
-use super::{category::{BoardCategory, BoardCategoryId}, post::BoardPost};
+use super::{
+    category::{BoardCategory, BoardCategoryId},
+    post::BoardPost,
+};
 
 pub struct Board {
     pub id: String,
@@ -43,9 +46,7 @@ impl Board {
         let selector = Selector::parse(".b-list__row").expect("parse selector error");
         self.document
             .select(&selector)
-            .filter_map(|root| {
-                BoardPost::try_from(root).ok()
-            })
+            .filter_map(|root| BoardPost::try_from(root).ok())
             .collect::<Vec<BoardPost>>()
     }
 
@@ -63,9 +64,10 @@ impl Board {
     }
 
     fn try_id_from_url(url: &Url) -> Option<String> {
-        let query = url.query_pairs()
+        let query = url
+            .query_pairs()
             .find(|(k, _)| k == "bsn")
-            .map(|(_, v)|v)
+            .map(|(_, v)| v)
             .unwrap();
 
         Some(query.to_string())
@@ -75,16 +77,14 @@ impl Board {
         let mut map: HashMap<String, BoardCategory> = HashMap::new();
 
         let selector = Selector::parse(".b-tags__item a").expect("parse selector error");
-        document
-            .select(&selector)
-            .for_each(|elm| {
-                let href = elm.value().attr("href").unwrap();
-                let url = Url::parse(href).unwrap();
-                let id =  BoardCategoryId::try_from(url).unwrap();
-                let name = elm.text().collect::<String>();
+        document.select(&selector).for_each(|elm| {
+            let href = elm.value().attr("href").unwrap();
+            let url = Url::parse(href).unwrap();
+            let id = BoardCategoryId::try_from(url).unwrap();
+            let name = elm.text().collect::<String>();
 
-                map.insert(id.sub_id.to_owned(), BoardCategory { id, name });
-            });
+            map.insert(id.sub_id.to_owned(), BoardCategory { id, name });
+        });
 
         Some(map)
     }
@@ -97,10 +97,10 @@ impl TryFrom<WebSite> for Board {
         let WebSite { document, url } = web;
 
         Ok(Board {
-            name: Board::try_name_from_html(&document).map_or(String::from(""), |v|v),
+            name: Board::try_name_from_html(&document).map_or(String::from(""), |v| v),
             id: Board::try_id_from_url(&url).ok_or("id invalid")?,
             category: Board::try_category_map_from_html(&document).ok_or("category invalid")?,
-            document
+            document,
         })
     }
 }
