@@ -2,7 +2,7 @@ use ratatui::{
     buffer::Buffer,
     layout::Rect,
     style::{Color, Modifier, Style},
-    text::{Span, Spans},
+    text::{Span, Line},
     widgets::{Block, Paragraph, StatefulWidget, Widget, Wrap},
 };
 
@@ -18,18 +18,18 @@ impl StatefulWidget for CommentPageUI {
 
         let name_style = Style::default().add_modifier(Modifier::REVERSED);
         let floor_style = Style::default().fg(Color::White);
-        let items: Vec<Spans> = state
+        let items: Vec<Line> = state
             .items
             .iter()
             .skip(state.offset)
             .flat_map(|comment| {
                 vec![
-                    Spans::from(vec![
+                    Line::from(vec![
                         Span::styled::<String>(format!("B{} ", comment.floor), floor_style),
                         Span::styled::<&str>(comment.nick.as_ref(), name_style),
                         Span::from(format!(": {}", comment.content)),
                     ]),
-                    Spans::from(""),
+                    Line::from(""),
                 ]
             })
             .collect();
