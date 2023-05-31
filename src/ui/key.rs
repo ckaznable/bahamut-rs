@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Rc, sync::mpsc::Sender};
 
-use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers, KeyEventKind};
+use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use tui_input::backend::crossterm::EventHandler;
 
 use crate::channel::DataRequestMsg;
