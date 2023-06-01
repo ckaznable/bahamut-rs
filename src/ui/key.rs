@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Rc, sync::mpsc::Sender};
 
-use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
+use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use tui_input::backend::crossterm::EventHandler;
 
 use crate::channel::DataRequestMsg;
@@ -20,6 +20,10 @@ impl KeyBindEvent {
 }
 
 pub fn handle_key(app: &mut AppState, event: KeyEvent, tx: Sender<DataRequestMsg>) -> KeyBindEvent {
+    if event.kind != KeyEventKind::Press {
+        return KeyBindEvent::None;
+    }
+
     if handle_general_key(app, event, tx.clone()).is_quit() {
         return KeyBindEvent::Quit;
     }
