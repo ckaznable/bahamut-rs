@@ -1,7 +1,7 @@
 use ratatui::{
     layout::{Alignment, Constraint, Layout},
     style::{Modifier, Style},
-    text::Spans,
+    text::Line,
     widgets::{Block, Borders, List, ListItem, StatefulWidget, Widget},
 };
 
@@ -31,7 +31,7 @@ impl StatefulWidget for BoardPageUI {
         let items: Vec<ListItem> = state
             .items
             .iter()
-            .map(|item| ListItem::new(vec![Spans::from(item.title.as_ref())]))
+            .map(|item| ListItem::new(vec![Line::from(item.title.as_ref())]))
             .collect();
 
         let selected_style = Style::default().add_modifier(Modifier::REVERSED);

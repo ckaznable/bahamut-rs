@@ -2,7 +2,7 @@ use ratatui::{
     buffer::Buffer,
     layout::{Constraint, Layout, Rect},
     style::{Color, Modifier, Style},
-    text::Spans,
+    text::Line,
     widgets::{Block, Borders, List, ListItem, Paragraph, StatefulWidget, Widget},
 };
 
@@ -55,7 +55,7 @@ impl StatefulWidget for SearchPageUI {
         let items: Vec<ListItem> = state
             .items
             .iter()
-            .map(|item| ListItem::new(vec![Spans::from(item.name.as_ref())]))
+            .map(|item| ListItem::new(vec![Line::from(item.name.as_ref())]))
             .collect();
 
         let block = Block::default().borders(Borders::ALL);
