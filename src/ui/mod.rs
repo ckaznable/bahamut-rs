@@ -26,7 +26,7 @@ pub fn ui<B: Backend>(f: &mut Frame<B>, app: &mut AppState) {
 
     match app.page {
         Page::Search => {
-            f.render_stateful_widget(SearchPageUI::default(), size, &mut app.search);
+            f.render_stateful_widget(SearchPageUI, size, &mut app.search);
             if app.search.mode == InputMode::Edit {
                 f.set_cursor(app.search.cursor.0, app.search.cursor.1);
             }
